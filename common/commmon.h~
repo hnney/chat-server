@@ -18,7 +18,7 @@ class conn_t {
         int     writebuf_size;
         int     read_pos;
         int     write_pos;
-        int     invalid;
+        //int     invalid;
         int     mark;
         union   data {
             void*   ptr;
@@ -31,20 +31,16 @@ class conn_t {
 class conninfo {
     public:
         conn_t *conn;
-
     public:
-
         conninfo(conn_t *c) {
             conn = c; 
         }
-
         bool operator < (const conninfo &obj) {
             return c->invalid_time < obj.c->invalid_time;
         }
         bool operator > (const conn_t &obj) {
             return c->invalid_time > obj.c->invalid_time;
         }
-
 };
 
 class person_t {
@@ -70,15 +66,22 @@ class group_t : public person_t {
         vector <person_t>   members;
 };
 
+#define STATE_WAITE_LOGIN 1
+#define 
+
 class user_t : public: person_t {
     public:
-        user_t(){}
+        user_t(){
+            conn = NULL;
+        }
         virtual ~user_t(){}
         vector <friend_t>   friends;
         vector <group_t>    groups;
-        void *ptr;
+        conn_t* conn;
+        int     state;
         //other msg
 };
 
 #endif //__USER_H__
+
 
