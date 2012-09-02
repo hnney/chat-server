@@ -1,7 +1,7 @@
 #ifndef __EVENT_QUEUE_H__
 #define __EVENT_QUEUE_H__
 
-#include "msg.h"
+#include "../common/msg.h"
 
 class event_t {
     public:

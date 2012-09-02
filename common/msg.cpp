@@ -2,7 +2,7 @@
 #include <iostream>
 using namespace std;
 
-Msg::Msg() {
+msg_t::msg_t() {
     mark_ = 0;
     cmd_ = 0;
     uid_ = 0;
@@ -11,12 +11,12 @@ Msg::Msg() {
     buf_ = 0;
     succ_ = 0;
 }
-Msg::~Msg() {
+msg_t::~msg_t() {
     if (buf_) {
         free(buf_);
     }
 }
-int Msg::serialize_size() {
+int msg_t::serialize_size() {
     int ret = sizeof(mark_);
     if (hasbits(1)) {
         ret += sizeof(cmd_);
@@ -43,7 +43,7 @@ int Msg::serialize_size() {
     }
     return ret;
 }
-int Msg::serialize(char *buf) {
+int msg_t::serialize(char *buf) {
     char *data = buf;
     saveuint(data, mark_);
     if (hasbits(1)) {
@@ -70,7 +70,7 @@ int Msg::serialize(char *buf) {
     }
     return data-buf;
 }
-int Msg::unserialize(char *buf) {
+int msg_t::unserialize(char *buf) {
     char *data = buf;
     mark_ = loaduint(data);
     if (hasbits(1)) {
@@ -99,7 +99,7 @@ int Msg::unserialize(char *buf) {
     return data-buf;
 }
 
-ostream& operator <<(ostream &os, Msg &e) {
+ostream& operator <<(ostream &os, msg_t &e) {
     if(e.hasbits(1)) {
         os<<"cmd:"<<(e.cmd())<<endl;
     }
@@ -128,7 +128,7 @@ ostream& operator <<(ostream &os, Msg &e) {
 #ifdef __TEST__
 int main (int argc, char **argv) {
 
-    Msg e;
+    msg_t e;
     e.set_cmd(1);
     e.set_type(2);
     e.set_uid(10);
@@ -140,7 +140,7 @@ int main (int argc, char **argv) {
     char *buf = (char*)malloc(len);
     e.serialize(buf);
 
-    Msg e1;
+    msg_t e1;
     char *buf1 = (char*)malloc(len);
     memcpy(buf1, buf, len);
     e1.unserialize(buf1);

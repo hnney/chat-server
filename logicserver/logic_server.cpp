@@ -1,4 +1,4 @@
-#include "net_event.h"
+#include "../event/net_event.h"
 #include <iostream>
 #include <map>
 
@@ -82,7 +82,7 @@ static int proc_data(conn_t* conn) {
         read_data(conn, buf, ulen+6);
         buf[ulen+6-1] = '\0';
         
-        Msg msg;
+        msg_t msg;
         msg.unserialize(buf+6);
 
         proc_cmd(&msg, conn);

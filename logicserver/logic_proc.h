@@ -4,7 +4,7 @@
 #include "../common/msg.h"
 #include "../common/common.h"
 
-typedef int (*cmd_callback)(Msg *msg, conn_t *conn);
+typedef int (*cmd_callback)(msg_t *msg, conn_t *conn);
 
 typedef struct _logicCmd {
     int cmd_;

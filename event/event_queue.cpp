@@ -1,5 +1,5 @@
 #include "event_queue.h"
-#include "heap.h"
+#include "../common/heap.h"
 
 
 static heap <event_t, greater<event_t>> event_queue_;

@@ -1,5 +1,5 @@
 #include "net_func.h"
-#include "common.h"
+#include "../common/common.h"
 int hl_init_socket(const char *address, int port) {
     int sockfd = -1; 
     struct sockaddr_in addr;
