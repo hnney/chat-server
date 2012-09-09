@@ -9,8 +9,8 @@ class event_t {
         msg_t *msg;
 
         event_t(time_t t, msg_t *msg) {
-            this.time = t;
-            this.msg = msg;
+            this->time = t;
+            this->msg = msg;
         }
 
         bool operator < (const event_t &obj) {

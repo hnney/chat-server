@@ -1,10 +1,15 @@
 #ifndef __USER_H__
 #define __USER_H__
 
+#include <vector>
 #include <string>
 #include <time.h>
+#include <iostream>
 
 using namespace std;
+
+#define CONN_DB_SERVER 1
+#define CONN_CLIENT    2
 
 class conn_t {
     private:
@@ -18,12 +23,12 @@ class conn_t {
         int     writebuf_size;
         int     read_pos;
         int     write_pos;
-        //int     invalid;
+        int     invalid;
         int     mark;
-        union   data {
+        union   _data {
             void*   ptr;
             int     uid;
-        };
+        }data;
         time_t  invalid_time;
         
 };
@@ -31,15 +36,15 @@ class conn_t {
 class conninfo {
     public:
         conn_t *conn;
-    public:
+
         conninfo(conn_t *c) {
             conn = c; 
         }
-        bool operator < (const conninfo &obj) {
-            return c->invalid_time < obj.c->invalid_time;
+        bool operator < (const conninfo &obj) const {
+            return conn->invalid_time < obj.conn->invalid_time;
         }
-        bool operator > (const conn_t &obj) {
-            return c->invalid_time > obj.c->invalid_time;
+        bool operator > (const conninfo &obj) const {
+            return conn->invalid_time > obj.conn->invalid_time;
         }
 };
 
@@ -66,12 +71,13 @@ class group_t : public person_t {
         vector <person_t>   members;
 };
 
-#define STATE_WAITE_LOGIN 0 
+#define STATE_WAIT_LOGIN 0 
 #define STATE_LOGINED 1
 #define STATE_EXIT 2
 #define STATE_DISCONNECT 3
+#define STATE_AUTH_FAILED 4
 
-class user_t : public: person_t {
+class user_t : public person_t {
     public:
         user_t(){
             conn = NULL;

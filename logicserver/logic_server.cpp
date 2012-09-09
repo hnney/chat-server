@@ -1,4 +1,11 @@
-#include "../event/net_event.h"
+#include "../common/common.h"
+#include "../common/heap.h"
+#include "../common/msg.h"
+#include "../common/utils.h"
+#include "../net/net_event.h"
+#include "../net/net_func.h"
+#include "logic_proc.h"
+
 #include <iostream>
 #include <map>
 
@@ -8,6 +15,8 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+#include <unistd.h>
+#include <stdio.h>
 
 #define READ_BUFSIZE 1024*10
 #define WRITE_BUFSIZE 1024*10
@@ -19,11 +28,11 @@ static int ds_listen_fd_ = -1;
 static event_t *handler = NULL;
 
 //static map <int, int> uid2fd_map;
-static map <int, user_t *> idu_map;
-static map <int, struct conn_t *> fdc_map;
-static vector <struct conn_t *> dbserver_conns;
+map <int, user_t *> idu_map;
+map <int, struct conn_t *> fdc_map;
+vector <struct conn_t *> dbserver_conns;
 
-heap <conninfo> conn_timeout;
+heap <conninfo, greater<conninfo> > conn_timeout;
 
 static int accept_new_client(int fd) {
     struct sockaddr_in clientaddr;
@@ -39,7 +48,7 @@ static int accept_new_client(int fd) {
         conn_t *conn = create_conn(c_fd, READ_BUFSIZE, WRITE_BUFSIZE);
         if (conn == NULL) {
             cerr<<"malloc conn failed\n";
-            clsoe(c_fd);
+            close(c_fd);
             continue;     
         }
         if (event_add(handler,c_fd, EV_READ|EV_WRITE|EV_ET) < 0) {
@@ -52,8 +61,12 @@ static int accept_new_client(int fd) {
         conn_timeout.push(conninfo(conn));
         fdc_map[c_fd] = conn;
         if (fd == ds_listen_fd_) {
+	    conn->mark = CONN_DB_SERVER;
             dbserver_conns.push_back(conn);
             cout<<"data server client\n";
+        }
+        else {
+            conn->mark = CONN_CLIENT;
         }
     } 
     return 0;
@@ -68,8 +81,8 @@ static int proc_data(conn_t* conn) {
         }
         char *buf = sbuf;
         unsigned int ulen = 0;
-        sscanf(conn->readbuf, "%05X", ulen);
-        if (conn->read_pos < 6 + ulen) {
+        sscanf(conn->readbuf, "%05X", &ulen);
+        if ((unsigned int)conn->read_pos < (6 + ulen)) {
             break;
         }
         if (ulen + 6 > sizeof(sbuf)) {
@@ -85,6 +98,9 @@ static int proc_data(conn_t* conn) {
         msg_t msg;
         msg.unserialize(buf+6);
 
+        if (conn->mark == CONN_CLIENT) {
+            msg.set_state(1);
+        }
         proc_cmd(&msg, conn);
 
         if (buf != sbuf) {
@@ -100,7 +116,7 @@ static int net_handle(int fd, int op) {
         accept_new_client(fd);
     }
     else {
-        map <int, conn_t *>::ierator fditer = fdc_map.find(fd);
+        map <int, conn_t *>::iterator fditer = fdc_map.find(fd);
         if (fditer == fdc_map.end()) {
             cerr<<"net_handler not found conn in fdc_map, fd:"<<fd<<endl;
            return -1; 
@@ -114,9 +130,10 @@ static int net_handle(int fd, int op) {
         }
         if(op & EV_WRITE) {
             //write data
-            send_buffer(conn);
+            wl = send_buffer(conn);
         }
     }
+    return 0;
 }
 
 static void *thread_main(void *arg) {
@@ -130,13 +147,22 @@ static void *thread_main(void *arg) {
 
         // check conn timeout
         // invalid_time < now
+        long long now = hl_timestamp();
         while (conn_timeout.size() > 0 && conn_timeout.top().conn->invalid_time < now) {
             conn_t *conn = conn_timeout.top().conn;
             conn_timeout.pop();
             //TODO
+            if (conn->data.ptr != NULL) {
+                user_t *user = (user_t *)conn->data.ptr;
+                send_user_exit(user);
+                clean_user(user);
+            } 
+            else {
+               clean_conn(conn);
+            }
         }
     }
-    return null;
+    return NULL;
 }
 
 int main(int argc, char **argv) {

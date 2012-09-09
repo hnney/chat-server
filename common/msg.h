@@ -16,25 +16,21 @@ class msg_t {
         char *buf_;
         string msg_;
         int succ_;
+        int state_;
+
     private:
         unsigned int mark_;
         void setbits(int index) { mark_ |= 1<<index; }
         bool hasbits(int index) { return (mark_ & 1<<index) != 0; }
+
     public:
-        msg_t() {
-            buf_ = NULL;
-            time_ = 0;
-        }
-        virtual ~msg_t() {
-            if (buf_) {
-                free(buf_);
-            }
-        }
+        msg_t();
+        virtual ~msg_t();
 
         int serialize_size(); 
         int serialize(char *buf);
         int unserialize(char *buf); 
-        friend ostream& operator <<(ostream &os, Msg &e);
+        friend ostream& operator <<(ostream &os, msg_t &e);
 
         //id = 1
         int cmd() { return cmd_;}
@@ -83,6 +79,11 @@ class msg_t {
         void set_succ (int succ) {
             succ_ = succ;
             setbits(7);
+        }
+        //id = 8
+        int state() { return state_;}
+        void set_state(int state) {
+            state_ = state;
         }
 };
 

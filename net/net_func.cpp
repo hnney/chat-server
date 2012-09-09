@@ -1,5 +1,14 @@
 #include "net_func.h"
-#include "../common/common.h"
+#include "../common/utils.h"
+
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+#include <errno.h>
+
 int hl_init_socket(const char *address, int port) {
     int sockfd = -1; 
     struct sockaddr_in addr;
@@ -59,7 +68,7 @@ conn_t* create_conn(int fd, int readbuf_size, int writebuf_size) {
         conn->read_pos = 0;
         conn->write_pos = 0;
         conn->invalid = 0;
-        conn->ptr = NULL;
+        conn->data.ptr = NULL;
         conn->invalid_time = hl_timestamp() + 30 * 1000 * 1000LL;
         conn->readbuf = (char *)malloc(sizeof(char)*readbuf_size);
         conn->writebuf = (char *)malloc(sizeof(char)*writebuf_size);
@@ -92,7 +101,7 @@ int fill_buffer(struct conn_t *conn)
     while (1) {
         int bufsize = conn->readbuf_size - conn->read_pos;
         if (bufsize <= 0) {
-            cerr<"read buffer not enough, fd:"<<conn->fd<<endl;
+            cerr<<"read buffer not enough, fd:"<<conn->fd<<endl;
             return -1; 
         }   
         int n = read(conn->fd, conn->readbuf + conn->read_pos, bufsize);

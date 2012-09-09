@@ -6,7 +6,7 @@
 
 using namespace std;
 
-template <typename T, typename CMP = less<T> > class heap {
+template <typename T, typename CMP> class heap {
     public:
         heap();
         ~heap();

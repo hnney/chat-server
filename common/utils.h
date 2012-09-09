@@ -3,6 +3,9 @@
 
 #include <stddef.h>
 #include <sys/time.h>
+#include <string>
+
+using namespace std;
 
 /**
  * @brief string to long int

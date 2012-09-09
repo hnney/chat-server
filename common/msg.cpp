@@ -1,5 +1,7 @@
 #include "msg.h"
 #include <iostream>
+
+#include <arpa/inet.h>
 using namespace std;
 
 msg_t::msg_t() {
@@ -10,6 +12,7 @@ msg_t::msg_t() {
     buflen_ = 0;
     buf_ = 0;
     succ_ = 0;
+    buf_ = NULL;
 }
 msg_t::~msg_t() {
     if (buf_) {
@@ -41,32 +44,40 @@ int msg_t::serialize_size() {
     if (hasbits(7)) {
         ret += sizeof(succ_);
     }
+    if (hasbits(8)) {
+        ret += sizeof(state_);
+    }
     return ret;
 }
 int msg_t::serialize(char *buf) {
     char *data = buf;
     saveuint(data, mark_);
     if (hasbits(1)) {
-        saveint(data,cmd_);
+        saveint(data,htonl(cmd_));
     }
     if (hasbits(2)) {
-        saveint(data,type_);
+        saveint(data,htonl(type_));
     }
     if (hasbits(3)) {
-        saveint(data,uid_);
+        saveint(data,htonl(uid_));
     }
     if (hasbits(4)) {
-        saveint(data,tuid_);
+        saveint(data,htonl(tuid_));
     }
     if (hasbits(5)) {
-        saveint(data,buflen_);
-        savebytes(data,buf_,buflen_);
+        saveint(data,htonl(buflen_));
+        if (buflen_ > 0) {
+            savebytes(data,buf_,buflen_);
+        }
     }
     if (hasbits(6)) {
         savestring(data, msg_);
     }
     if (hasbits(7)) {
-        saveint(data, succ_);
+        saveint(data, htonl(succ_));
+    }
+    if (hasbits(8)) {
+        saveint(data, htonl(state_));
     }
     return data-buf;
 }
@@ -74,27 +85,33 @@ int msg_t::unserialize(char *buf) {
     char *data = buf;
     mark_ = loaduint(data);
     if (hasbits(1)) {
-        cmd_ = loadint(data);
+        cmd_ = ntohl(loadint(data));
     }
     if (hasbits(2)) {
-        type_ = loadint(data);
+        type_ = ntohl(loadint(data));
     }
     if (hasbits(3)) {
-        uid_ = loadint(data);
+        uid_ = ntohl(loadint(data));
     }
     if (hasbits(4)) {
-        tuid_ = loadint(data);
+        tuid_ = ntohl(loadint(data));
     }
     if (hasbits(5)) {
-        buflen_ = loadint(data);
-        buf_ = (char*)malloc(sizeof(char)*buflen_);
-        loadbytes(data, buf_, buflen_);
+        buflen_ = ntohl(loadint(data));
+        buf_ = NULL;
+        if (buflen_ > 0) {
+            buf_ = (char*)malloc(sizeof(char)*buflen_);
+            loadbytes(data, buf_, buflen_);
+        }
     }
     if (hasbits(6)) {
         msg_ = loadstring(data); 
     }
     if (hasbits(7)) {
-        succ_ = loadint(data);
+        succ_ = ntohl(loadint(data));
+    }
+    if (hasbits(8)) {
+        state_ = ntohl(loadint(data));
     }
     return data-buf;
 }
@@ -120,6 +137,9 @@ ostream& operator <<(ostream &os, msg_t &e) {
     }
     if (e.hasbits(7)) {
         os<<"succ: "<<e.succ()<<endl;
+    }
+    if (e.hasbits(8)) {
+        os<<"sate: "<<e.state()<<endl;
     }
     return os;
 }

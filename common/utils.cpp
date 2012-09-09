@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <errno.h>
 
 long long hl_timestamp(void)
 {   
