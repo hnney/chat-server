@@ -27,8 +27,7 @@ static int client_listen_fd_ = -1;
 static int ds_listen_fd_ = -1;
 static event_t *handler = NULL;
 
-//static map <int, int> uid2fd_map;
-map <int, user_t *> idu_map;
+map <string, user_t *> idu_map;
 map <int, struct conn_t *> fdc_map;
 vector <struct conn_t *> dbserver_conns;
 

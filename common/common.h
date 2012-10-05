@@ -52,7 +52,7 @@ class person_t {
     public:
         person_t() {}
         virtual ~person_t() {}
-        int     uid;
+        string  uid;
         string  nickname;
 };
 

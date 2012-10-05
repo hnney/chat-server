@@ -7,8 +7,6 @@ using namespace std;
 msg_t::msg_t() {
     mark_ = 0;
     cmd_ = 0;
-    uid_ = 0;
-    tuid_ = 0;
     buflen_ = 0;
     buf_ = 0;
     succ_ = 0;
@@ -28,10 +26,12 @@ int msg_t::serialize_size() {
         ret += sizeof(type_);
     }
     if (hasbits(3)) {
-        ret += sizeof(uid_);
+        ret += sizeof(int);
+        ret += uid_.size();
     }
     if (hasbits(4)) {
-        ret += sizeof(tuid_);
+        ret += sizeof(int);
+        ret += tuid_.size();
     }
     if (hasbits(5)) {
         ret += sizeof(buflen_);
@@ -59,10 +59,10 @@ int msg_t::serialize(char *buf) {
         saveint(data,htonl(type_));
     }
     if (hasbits(3)) {
-        saveint(data,htonl(uid_));
+        savestring(data,uid_);
     }
     if (hasbits(4)) {
-        saveint(data,htonl(tuid_));
+        savestring(data,tuid_);
     }
     if (hasbits(5)) {
         saveint(data,htonl(buflen_));
@@ -91,10 +91,10 @@ int msg_t::unserialize(char *buf) {
         type_ = ntohl(loadint(data));
     }
     if (hasbits(3)) {
-        uid_ = ntohl(loadint(data));
+        uid_ = loadstring(data);
     }
     if (hasbits(4)) {
-        tuid_ = ntohl(loadint(data));
+        tuid_ = loadstring(data);
     }
     if (hasbits(5)) {
         buflen_ = ntohl(loadint(data));
@@ -149,9 +149,10 @@ ostream& operator <<(ostream &os, msg_t &e) {
 int main (int argc, char **argv) {
 
     msg_t e;
+    string uid = "10";
     e.set_cmd(1);
     e.set_type(2);
-    e.set_uid(10);
+    e.set_uid(uid);
     e.set_buf("good", 4);
 
     int len = e.serialize_size();

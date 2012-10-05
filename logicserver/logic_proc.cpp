@@ -2,7 +2,7 @@
 #include "../net/net_func.h"
 #include "../common/utils.h"
 
-extern map <int, user_t *> idu_map;
+extern map <string, user_t *> idu_map;
 extern map <int, struct conn_t *> fdc_map;
 extern vector <struct conn_t *> dbserver_conns;
 
@@ -77,7 +77,7 @@ void send_keepalive(conn_t *conn, msg_t *msg) {
 
 int proc_login_cmd (msg_t *msg, conn_t *conn) {
     if (msg->state() == 1) {
-        map <int, user_t *>::iterator uiter = idu_map.find(msg->uid());
+        map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
         if (uiter != idu_map.end()) {
             msg->set_succ(1);
             send_to_client(msg, conn);
@@ -101,7 +101,7 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
         conn->invalid_time = hl_timestamp() + 5*1000*1000;
     }
     else if (msg->state() == 3) {
-        map <int, user_t *>::iterator uiter = idu_map.find(msg->uid());
+        map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
         if (uiter == idu_map.end()) {
             cerr<<"proc_login_cmd, not found user, state:"<<msg->state()<<" uid:"<<msg->uid()<<endl;
             return -2;
@@ -139,7 +139,7 @@ int proc_exit_cmd(msg_t* msg, conn_t* conn) {
         conn->invalid_time = hl_timestamp() + 5*1000*1000;
     }
     else if (msg->state() == 3) {
-        map <int, user_t *>::iterator uiter = idu_map.find(msg->uid());
+        map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
         if (uiter == idu_map.end()) {
             cerr<<"proc_exit_cmd, not found user, state:"<<msg->state()<<" uid:"<<msg->uid()<<endl;
             return -2;

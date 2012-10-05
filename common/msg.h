@@ -10,13 +10,16 @@ class msg_t {
     private:
         int cmd_;   
         int type_;   
-        int uid_;    
-        int tuid_;
+        int state_;
+        int succ_;
+
         int buflen_;
         char *buf_;
+
+        string uid_;    
+        string tuid_;
         string msg_;
-        int succ_;
-        int state_;
+
 
     private:
         unsigned int mark_;
@@ -45,14 +48,14 @@ class msg_t {
             setbits(2);
         }
         //id = 3
-        int uid() { return uid_; }
-        void set_uid (int uid) {
+        string &uid() { return uid_; }
+        void set_uid (string& uid) {
             uid_ = uid;
             setbits(3);
         }
         //id = 4;
-        int tuid() { return tuid_;}
-        void set_tuid (int tuid) {
+        string tuid() { return tuid_;}
+        void set_tuid (string tuid) {
             tuid_ = tuid;
             setbits(4);
         }
