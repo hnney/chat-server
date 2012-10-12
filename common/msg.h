@@ -1,7 +1,9 @@
 #ifndef __EVENT_H__
 #define __EVENT_H__
+
 #include <string.h>
 #include <iostream>
+
 using namespace std;
 
 #include "serialize.h"
@@ -20,8 +22,6 @@ class msg_t {
         string tuid_;
         string msg_;
 
-
-    private:
         unsigned int mark_;
         void setbits(int index) { mark_ |= 1<<index; }
         bool hasbits(int index) { return (mark_ & 1<<index) != 0; }

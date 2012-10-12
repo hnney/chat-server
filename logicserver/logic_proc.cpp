@@ -23,20 +23,6 @@ int proc_cmd(msg_t* msg, conn_t *conn) {
     return ret;
 }
 
-static int send_to_client(msg_t *msg, conn_t* conn) {
-    int bufsize = conn->writebuf_size - conn->write_pos;
-    int datalen = msg->serialize_size();
-    if (bufsize < datalen + 6) {
-        cerr<<"send buffer not enough, buf:"<<bufsize<<" datalen:"<<datalen<<endl; 
-        return -1;
-    }
-    char *buf = conn->writebuf + conn->write_pos;
-    sprintf(buf, "%05X@", datalen);
-    msg->serialize(buf+6);
-    send_buffer(conn);
-    return 0;
-}
-
 static int send_to_dbserver(msg_t *msg) {
     static int index = 0;
     int i = (index++) % dbserver_conns.size();

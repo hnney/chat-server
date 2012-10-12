@@ -59,6 +59,72 @@ int open_listener(const char *addr, int port) {
     return fd;
 }
 
+int myconnect(const char* ip, int port) {
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0); 
+    if (sockfd < 0) {
+        cerr<<"socket failed!\n";
+        return -1; 
+    }   
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    inet_pton(AF_INET, ip, &addr.sin_addr);
+
+    if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        cerr<<"connect ip:"<<ip<<" port:"<<port<<" failed \n";
+        close(sockfd);
+        return -2; 
+    }   
+    return sockfd;
+}
+
+conn_t *conn_to_server(const char* ip, int port) {
+    struct conn_t *conn = NULL;
+    int sockfd = myconnect(ip, port);
+    if (set_nonblock_fd(sockfd) < 0) {
+        cerr<<"set fd:"<<sockfd<<" non block failed"<<endl;
+        close(sockfd);
+        return conn;
+    }   
+    conn = create_conn(sockfd, 256*1024, 256*1024);
+    if (conn == NULL) { 
+        cerr<<"create conn failed"<<endl;
+        close(sockfd);
+    }   
+    return conn;
+}   
+
+int reconn_to_server(conn_t *conn, const char* ip, int port) {
+    cout<<"reconnect, ip:"<<ip<<" port:"<<port<<endl; 
+    if (conn->fd > 0) {
+        close(conn->fd);
+        conn->fd = -1;
+    }   
+    conn->fd = myconnect(ip, port);
+    if (conn->fd > 0) {
+        conn->invalid = 0;
+    }   
+    if (set_nonblock_fd(conn->fd) < 0) {
+        cerr<<"reconnect, set nonblock failed"<<endl;
+        conn->invalid = 1;
+    }   
+    return 0;
+}   
+
+int check_connected(conn_t *conn, const char* ip, int port) {
+    if (conn->invalid) {
+        for (int i = 0; i < 3; i++) {
+            reconn_to_server(conn, ip, port);
+            if (conn->invalid == 0) {
+                break;
+            }   
+            sleep(1);
+        }   
+    }   
+    return 0;
+}  
+
 conn_t* create_conn(int fd, int readbuf_size, int writebuf_size) {
     struct conn_t *conn = (struct conn_t *)malloc(sizeof(conn_t));
     if (conn) {
@@ -167,5 +233,19 @@ int read_data(struct conn_t *conn, void *buf, int len)
     memmove(conn->readbuf, conn->readbuf + size, conn->read_pos - size);
     conn->read_pos -= size;
     return size;
+}
+
+int send_to_client(msg_t *msg, conn_t* conn) {
+    int bufsize = conn->writebuf_size - conn->write_pos;
+    int datalen = msg->serialize_size();
+    if (bufsize < datalen + 6) {
+        cerr<<"send buffer not enough, buf:"<<bufsize<<" datalen:"<<datalen<<endl; 
+        return -1; 
+    }   
+    char *buf = conn->writebuf + conn->write_pos;
+    sprintf(buf, "%05X@", datalen);
+    msg->serialize(buf+6);
+    send_buffer(conn);
+    return 0;
 }
 
