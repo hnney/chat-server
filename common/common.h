@@ -6,11 +6,20 @@
 #include <time.h>
 #include <iostream>
 
-using namespace std;
+#include <log4cxx/logger.h>
+
+#include "config.h"
+
+
+extern AppConfig config_;
+extern log4cxx::LoggerPtr logger_;
+
+
 
 #define CONN_DB_SERVER 1
 #define CONN_CLIENT    2
 
+using namespace std;
 class conn_t {
     private:
         conn_t() {

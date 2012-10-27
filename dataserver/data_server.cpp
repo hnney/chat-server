@@ -11,14 +11,20 @@
 #include <signal.h>
 #include <pthread.h>
 
+#include <log4cxx/basicconfigurator.h>
+#include <log4cxx/propertyconfigurator.h>
+#include <log4cxx/logger.h>
+
 #include <iostream>
 
 using namespace std;
 
-static string serv_ip = "";
-static int port = 0;
+static string serv_ip_ = "";
+static int port_ = 0;
+static volatile bool running = false;
 
-AppConfig config("server.cfg");
+AppConfig config_("server.cfg");
+log4cxx::LoggerPtr logger_;
 
 int read_event(conn_t *conn) {
     char sbuf[8192];
@@ -37,7 +43,7 @@ int read_event(conn_t *conn) {
             buf = (char *)malloc(sizeof(char)*(ulen+6));
         }   
         if (buf == NULL) {
-            cerr<<"proc_data: allocate memory faield!\n";
+            LOG4CXX_ERROR(logger_, "dataserver proc_data: allocate memory faield");
             break;
         }   
         read_data(conn, buf, ulen+6);
@@ -52,11 +58,13 @@ int read_event(conn_t *conn) {
             buf = NULL;
         }   
     }
+    int cnt = msg_event.size();
     push_proc_event(msg_event);
-    return 0;
+    return cnt;
 }
 
 int send_event(conn_t *conn) {
+    int cnt = 0;
     msg_t *msg = pop_proc_event();
     while (msg != NULL) {        
         if (send_to_client(msg, conn) < 0) {
@@ -65,41 +73,49 @@ int send_event(conn_t *conn) {
         }
         delete msg;
         msg = pop_proc_event();
+        cnt ++;
     }
-    return 0;
+    return cnt;
 }
 
 void *event_thread(void *arg) {
-    conn_t *conn = conn_to_server(config.get_ls_ip().c_str(), config.get_ls_port());
+    conn_t *conn = conn_to_server(config_.get_ls_ip().c_str(), config_.get_ls_port());
     if (conn == NULL) {
+        LOG4CXX_ERROR(logger_, "connect to logic server failed");
         return NULL;
     }
 
-    for(;;) {
+    int rcnt = 0;
+    int wcnt = 0;
+    while(running) {
         //read
-        check_connected(conn, config.get_ls_ip().c_str(), config.get_ls_port());
+        check_connected(conn, config_.get_ls_ip().c_str(), config_.get_ls_port());
         if (conn->invalid == 0) {
             fill_buffer(conn);
-            read_event(conn);
+            rcnt = read_event(conn);
         }
         //write
-        check_connected(conn, config.get_ls_ip().c_str(), config.get_ls_port());
+        check_connected(conn, config_.get_ls_ip().c_str(), config_.get_ls_port());
         if (conn->invalid == 0) {
-            send_event(conn);
+            wcnt = send_event(conn);
+        }
+        //TODO
+        //如果没有任何事情可以做的话，就休息一阵
+        if (rcnt == 0 && wcnt == 0) {
+            usleep(30);
         }
     }
 
     destroy_conn(conn);
-    pthread_exit(NULL);
     return NULL;
 }
 
 void *proc_thread(void *arg) {
     if (arg == NULL) {
-        cerr<<" proc_thread args is null\n";
+        LOG4CXX_ERROR(logger_, "dataserver create proc_thread failed, arg is null");
         return NULL;
     }
-    for(;;) {
+    while(running) {
         msg_t *msg = pop_proc_event(); 
         if (proc_cmd(msg, arg) == 0) {
             push_send_event(msg);
@@ -114,67 +130,95 @@ void *proc_thread(void *arg) {
 
 static void sig_handler(const int sig) {
     cout<<"SIGINT handled. \n";
-    exit(0);
+    running = false;
 }
 
 int main(int argc, char **argv) {
-    
-    if (argc < 4) {
+
+    if (argc < 1) {
         cerr<<"usage: \n";
-        cerr<<"      "<<argv[0]<<" serv_ip port thread_count\n";
-        exit(1);
+        cerr<<"      "<<argv[0]<<" id_num"<<endl; 
+        return 1;
     }
 
-    if (config.load_config() < 0 ) {
+    if (config_.load_config() < 0 ) {
         cerr<<"read server.cfg failed"<<endl;
-        exit(1);
+        return 1;
+    }
+    
+    int dsid = atoi(argv[1]);
+    if (dsid < 0 || dsid >= config_.get_ds_number()) {
+        cerr<<"dsid is invalid"<<endl;
+        return 1;
+    }
+    
+    //logger
+    string logcfg = "";
+    log4cxx::PropertyConfigurator::configureAndWatch(logcfg);
+    logger_ = log4cxx::Logger::getLogger("XXXX");
+    if (logger_ == NULL) {
+        cerr<<"getLogger XXXX failed"<<endl;
+        return 1;
     }
 
-    serv_ip = argv[1]; 
-    port = atoi(argv[2]);
-    
-    int thread_cnt = atoi(argv[3]);
+    serv_ip_ = config_.get_ds_ip(dsid); 
+    port_ = config_.get_ds_port(dsid); 
+
+    int thread_cnt = config_.get_ds_thread_number(); 
     if (thread_cnt < 2) {
         thread_cnt = 2;
     }
 
     if (sigignore(SIGPIPE) == -1) {
-        cerr<<"failed to ignore SIGPIP, sigaction\n"; 
-        exit(1);
+        LOG4CXX_ERROR(logger_, "dataserver sigignore SIGPIPE failed, exit");
+        return 1;
     }
     //handle SIGINT
     signal(SIGINT, sig_handler);
 
-
-    //nio thread
-    pthread_t nio_thd;
-    if (pthread_create(&nio_thd, NULL, event_thread, NULL) != 0) {
-        cerr<<"create net io thread failed\n";
-        exit(1);
-    }
+    running = true;
 
     pthread_t *work_thd = (pthread_t *)malloc(sizeof(pthread_t) * thread_cnt);
     if (work_thd == NULL) {
-        cerr<<"mallock pthread_t* failed\n";
-        exit(1);
+        LOG4CXX_ERROR(logger_, "dataserver malloc "<<thread_cnt<<" pthread_t memory failed, exit");
+        return 1;
     }
 
     DBManager * dbm = new DBManager[thread_cnt];
+
     for (int i = 0; i < thread_cnt; i++) {
-        dbm[i].init(config.get_db_host().c_str(), config.get_db_port(), config.get_db_database().c_str(),
-                config.get_db_user().c_str(), config.get_db_pwd().c_str());
-        dbm[i].connectMysql();
-        if (pthread_create(&work_thd[i], NULL, proc_thread, (void*)&dbm[i]) != 0) {
-            cerr<<"create work thd["<<i<<"] failed\n";
+        dbm[i].init(config_.get_db_host().c_str(), config_.get_db_port(), config_.get_db_database().c_str(),
+                config_.get_db_user().c_str(), config_.get_db_pwd().c_str());
+        if (!dbm[i].connectMysql()) {
+            LOG4CXX_ERROR(logger_, "dataserver connect mysql failed");
+            running = false;
+            break;
+        }
+        pthread_attr_t  attr;
+        pthread_attr_init(&attr);
+        if (pthread_create(&work_thd[i], &attr, proc_thread, (void*)&dbm[i]) != 0) {
+            LOG4CXX_ERROR(logger_, "dataserver create proc_thread ["<<i<<"] failed");
+            running = false;
+            break;
         }
     }
+    
+    LOG4CXX_INFO(logger_, "dataserver ["<<dsid<<"] start, ip:"<<serv_ip_.c_str()<<" port:"<<port_<<" thnum:"<<thread_cnt);
 
-    //暂时让他不结束
-    sleep(365*24*3600);
+    event_thread(NULL);
 
+    LOG4CXX_INFO(logger_, "dataserver wait all thread exit");
+
+    //wait for work thread exit
+    for (int i = 0; i < thread_cnt; i++) {
+        pthread_join(work_thd[i], NULL); 
+    }
     free(work_thd);
-    delete dbm;
-   
+    //destroy dbm
+    delete []dbm;
+    
+    LOG4CXX_INFO(logger_, "dataserver end");
+
     return 0;
 }
 

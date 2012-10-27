@@ -2,6 +2,7 @@
 #include "../common/heap.h"
 #include "../common/msg.h"
 #include "../common/utils.h"
+#include "../common/config.h"
 #include "../net/net_event.h"
 #include "../net/net_func.h"
 #include "logic_proc.h"
@@ -17,11 +18,23 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <signal.h>
+
+#include <log4cxx/basicconfigurator.h>
+#include <log4cxx/propertyconfigurator.h>
+#include <log4cxx/logger.h>
+
 
 #define READ_BUFSIZE 1024*10
 #define WRITE_BUFSIZE 1024*10
 
 using namespace std;
+
+
+static volatile bool running_ = false;
+
+AppConfig config_("server.cfg");
+log4cxx::LoggerPtr logger_;
 
 static int client_listen_fd_ = -1;
 static int ds_listen_fd_ = -1;
@@ -33,25 +46,27 @@ vector <struct conn_t *> dbserver_conns;
 
 heap <conninfo, greater<conninfo> > conn_timeout;
 
+volatile bool running = false;
+
 static int accept_new_client(int fd) {
     struct sockaddr_in clientaddr;
     socklen_t addrlen = sizeof(clientaddr);
     int c_fd = -1;
     while ((c_fd = accept(fd, (struct sockaddr*)&clientaddr, &addrlen)) > 0) {
-        cout<<"accept new fd:"<<c_fd<<endl;
+        LOG4CXX_DEBUG(logger_, "logicserver accept new fd:"<<c_fd);
         if(set_nonblock_fd(c_fd) < 0) {
-            cerr<<"set nonblock failed, fd:"<<c_fd<<endl;
+            LOG4CXX_ERROR(logger_, "set nonblock failed, fd:"<<c_fd);
             close(c_fd);
             continue;
         }
         conn_t *conn = create_conn(c_fd, READ_BUFSIZE, WRITE_BUFSIZE);
         if (conn == NULL) {
-            cerr<<"malloc conn failed\n";
+            LOG4CXX_ERROR(logger_, "malloc conn failed");
             close(c_fd);
             continue;     
         }
         if (event_add(handler,c_fd, EV_READ|EV_WRITE|EV_ET) < 0) {
-            cerr<<"event_add faield, fd"<<c_fd<<endl;
+            LOG4CXX_ERROR(logger_, "event_add failed ,fd:"<<c_fd);
             close(c_fd);
             conn->fd = 0;
             destroy_conn(conn);
@@ -59,10 +74,11 @@ static int accept_new_client(int fd) {
         }
         conn_timeout.push(conninfo(conn));
         fdc_map[c_fd] = conn;
+
         if (fd == ds_listen_fd_) {
-	    conn->mark = CONN_DB_SERVER;
+            conn->mark = CONN_DB_SERVER;
             dbserver_conns.push_back(conn);
-            cout<<"data server client\n";
+            LOG4CXX_DEBUG(logger_, "data server conn");
         }
         else {
             conn->mark = CONN_CLIENT;
@@ -88,12 +104,12 @@ static int proc_data(conn_t* conn) {
             buf = (char *)malloc(sizeof(char)*(ulen+6));
         }
         if (buf == NULL) {
-            cerr<<"proc_data: allocate memory faield!\n";
+            LOG4CXX_ERROR(logger_, "logicserver proc_data allocate memory failed");
             break;
         }
         read_data(conn, buf, ulen+6);
         buf[ulen+6-1] = '\0';
-        
+
         msg_t msg;
         msg.unserialize(buf+6);
 
@@ -117,8 +133,8 @@ static int net_handle(int fd, int op) {
     else {
         map <int, conn_t *>::iterator fditer = fdc_map.find(fd);
         if (fditer == fdc_map.end()) {
-            cerr<<"net_handler not found conn in fdc_map, fd:"<<fd<<endl;
-           return -1; 
+            LOG4CXX_ERROR(logger_, "logicserver net_handler not found conn in fdc_map, fd:"<<fd);
+            return -1; 
         }
         conn_t *conn = fditer->second;
         int rl = 0, wl = 0;
@@ -131,25 +147,26 @@ static int net_handle(int fd, int op) {
             //write data
             wl = send_buffer(conn);
         }
+        LOG4CXX_DEBUG(logger_, "logicserver rec:"<<rl<<" wl:"<<wl);
     }
     return 0;
 }
 
 static void *thread_main(void *arg) {
     if (arg == NULL) {
-        cerr<<"thread_main param is null\n";
+        LOG4CXX_ERROR(logger_, "thread_main arg is null");
         return NULL;
     }
     event_t *h = (event_t *)arg;
-    while (1) {
+    while (running_) {
         event_dispatch(h, 1000);
-
         // check conn timeout
         // invalid_time < now
         long long now = hl_timestamp();
         while (conn_timeout.size() > 0 && conn_timeout.top().conn->invalid_time < now) {
             conn_t *conn = conn_timeout.top().conn;
             conn_timeout.pop();
+
             //TODO
             if (conn->data.ptr != NULL) {
                 user_t *user = (user_t *)conn->data.ptr;
@@ -157,39 +174,67 @@ static void *thread_main(void *arg) {
                 clean_user(user);
             } 
             else {
-               clean_conn(conn);
+                clean_conn(conn);
             }
         }
     }
     return NULL;
 }
 
+static void sig_handler(const int sig) {
+    LOG4CXX_ERROR(logger_, "logicserver sig_handler "<<sig<<" failed");
+    running_ = false;
+}
+
 int main(int argc, char **argv) {
 
+    /*
     if (argc < 3) {
-        cout<<"usage: "<<argv[0]<<" ip port"<<endl;    
+        cerr<<"usage: "<<argv[0]<<" ip port"<<endl;    
         return 1;
     }
+    */
+
+    if (config_.load_config() < 0) {
+        cerr<<"logicserver read server.cfg failed"<<endl;
+        return 1;
+    }
+
+    string logcfg = "";
+    log4cxx::PropertyConfigurator::configureAndWatch(logcfg);
+    logger_ = log4cxx::Logger::getLogger("XXXX");
+    if (logger_ == NULL) {
+        cerr<<"logicserver getLogger "<<logcfg.c_str()<<" failed"<<endl;
+        return 1;
+    }
+
+    if (sigignore(SIGPIPE) == -1) {
+        LOG4CXX_ERROR(logger_, "logicserver sigignore SIGPIPE failed");
+        return 1;
+    }   
+    //handle SIGINT
+    signal(SIGINT, sig_handler);
+
     handler = event_init(net_handle, 10240);
     if (!handler) {
-        cerr<<"event_init failed"<<endl;
+        LOG4CXX_ERROR(logger_, "logicserver event_init failed");
         return 1;
     }
-    char *ip = argv[1];
-    int port = atoi(argv[2]); 
+
+    const char *ip = config_.get_ls_ip().c_str();
+    int port = config_.get_ls_port(); 
     client_listen_fd_ = open_listener(ip, port);
     if (client_listen_fd_ < 0) {
-        cerr<<"open_listener() failed"<<endl;
-        goto exit_;
+        LOG4CXX_ERROR(logger_, "logicserver open_listener() failed");
+        event_destroy(handler);
+        return 1;
     }
+    running_ = true;
 
     thread_main(handler);
 
-exit_:
-    if (handler) {
-        event_destroy(handler);
-        handler = NULL;
-    }
+    event_destroy(handler);
+
     return 0;
 }
 

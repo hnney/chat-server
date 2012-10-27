@@ -18,7 +18,7 @@ int proc_cmd(msg_t* msg, conn_t *conn) {
         ret = (*(logic_cmd[msg->cmd()].callback_))(msg, conn);
     }
     else {
-        cerr<<"proc_cmd: err msg cmd:"<<msg->cmd()<<endl;
+        LOG4CXX_ERROR(logger_, "proc_cmd, err msg cmd:"<<msg->cmd());
     }
     return ret;
 }
@@ -72,7 +72,7 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
    
         user_t* user = new user_t();
         if (user == NULL) {
-            cerr<<"proc_login_cmd, malloc memeory failed, state:"<<msg->state()<<" uid:"<<msg->uid()<<endl;
+            LOG4CXX_ERROR(logger_, "proc_login_cmd, malloc memory failed, state:"<<msg->state()<<" uid:"<<msg->uid());
             return -1;
         }   
         user->uid = msg->uid();
@@ -89,7 +89,7 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
     else if (msg->state() == 3) {
         map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
         if (uiter == idu_map.end()) {
-            cerr<<"proc_login_cmd, not found user, state:"<<msg->state()<<" uid:"<<msg->uid()<<endl;
+            LOG4CXX_ERROR(logger_, "proc_login_cmd, not found user, state:"<<msg->state()<<" uid:"<<msg->uid());
             return -2;
         }
         user_t *user = uiter->second;
@@ -106,7 +106,7 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
 	}
     }
     else {
-        cerr<<"proc_login_cmd:"<<msg<<endl;
+        //LOG4CXX_ERROR(logger_, "proc_login_cmd:"<<(*msg));
     }
 
     return 0;
@@ -127,7 +127,7 @@ int proc_exit_cmd(msg_t* msg, conn_t* conn) {
     else if (msg->state() == 3) {
         map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
         if (uiter == idu_map.end()) {
-            cerr<<"proc_exit_cmd, not found user, state:"<<msg->state()<<" uid:"<<msg->uid()<<endl;
+            LOG4CXX_ERROR(logger_, "proc_exit_cmd not found user, state:"<<msg->state()<<" uid:"<<msg->uid());
             return -2;
         }
         user_t *user = uiter->second;
@@ -137,7 +137,7 @@ int proc_exit_cmd(msg_t* msg, conn_t* conn) {
         }
     }
     else {
-        cerr<<"proc_exit_cmd,"<<(*msg)<<endl;
+        //LOG4CXX_ERROR(logger_, "proc_exit_cmd:"<<(*msg));
     }
 
     return 0; 

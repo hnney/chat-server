@@ -20,6 +20,7 @@ add_subdirectory (dataserver)
 add_executable (logicserverd logicserver/logic_server.cpp)
 add_executable (dataserverd dataserver/data_server.cpp)
 
-target_link_libraries (logicserverd logicserver common event net json mysqlpp log4cxx)
+target_link_libraries (logicserverd logicserver common event net json mysqlpp
+    log4cxx config++)
 target_link_libraries (dataserverd dataserver net event json mysqlpp log4cxx
     common config++)

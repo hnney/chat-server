@@ -14,13 +14,17 @@ int DBManager::init(const char *host, int port, const char *database, const char
 }
 
 DBManager::~DBManager() {
+    closeMysql();
+}
+
+void DBManager::closeMysql() {
     if (conn_.connected()) {
         conn_.disconnect();
     }
 }
 
 bool DBManager::connectMysql() {
-   return connectMysql(conn_);
+    return connectMysql(conn_);
 }
 
 bool DBManager::connectMysql(Connection &conn) {

@@ -5,6 +5,7 @@
 using namespace libconfig;
 
 #include <string>
+#include <vector>
 
 using namespace std;
 
@@ -28,10 +29,21 @@ public:
     string& get_db_pwd() { return dbpwd_; }
     int     get_db_port() { return dbport_; }
 
+    string& get_ds_ip(int index) { return ds_server_ip_[index]; }
+    int     get_ds_port(int index) { return ds_server_port_[index];}
+    int     get_ds_number() { return ds_number_; }
+    int     get_ds_thread_number() { return ds_thread_number_;}
+
 private:
     string logic_log_file_;
     string logic_server_ip_;
     int logic_server_port_;
+
+    int ds_number_;
+    int ds_thread_number_;
+
+    vector <string> ds_server_ip_;
+    vector <int>    ds_server_port_;
 
     string ds_log_file_;
     string ds_file_save_path_;

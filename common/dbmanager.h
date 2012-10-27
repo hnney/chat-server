@@ -18,6 +18,7 @@ public:
     int init(const char *host, int port, const char *database, const char *user, const char *pwd);
     bool connectMysql(Connection &conn);
     bool connectMysql();
+    void closeMysql();
 
 private:
 
