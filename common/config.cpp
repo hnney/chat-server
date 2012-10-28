@@ -15,8 +15,12 @@ int AppConfig::load_config(const char* filename) {
     try {
         cfg_.readFile(file);
         
-        logic_server_ip_ = (const char *)cfg_.lookup("app.logic_server.ip"); 
-        logic_server_port_ = cfg_.lookup("app.logic_server.port"); 
+        logic_server_client_bind_ip_ = (const char *)cfg_.lookup("app.logic_server.client_bind_ip"); 
+        logic_server_client_bind_port_ = cfg_.lookup("app.logic_server.client_bind_port"); 
+
+        logic_server_ds_bind_ip_ = (const char *)cfg_.lookup("app.logic_server.dataserver_bind_ip");
+        logic_server_ds_bind_port_ = cfg_.lookup("app.logic_server.dataserver_bind_port");
+
 
         ds_file_save_path_ = (const char *)cfg_.lookup("app.data_server.file_save_path");
         dbhost_ = (const char *)cfg_.lookup("app.data_server.db_host");

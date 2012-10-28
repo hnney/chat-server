@@ -79,7 +79,7 @@ int send_event(conn_t *conn) {
 }
 
 void *event_thread(void *arg) {
-    conn_t *conn = conn_to_server(config_.get_ls_ip().c_str(), config_.get_ls_port());
+    conn_t *conn = conn_to_server(config_.get_ls_ds_bind_ip().c_str(), config_.get_ls_ds_bind_port());
     if (conn == NULL) {
         LOG4CXX_ERROR(logger_, "connect to logic server failed");
         return NULL;
@@ -89,13 +89,13 @@ void *event_thread(void *arg) {
     int wcnt = 0;
     while(running) {
         //read
-        check_connected(conn, config_.get_ls_ip().c_str(), config_.get_ls_port());
+        check_connected(conn, config_.get_ls_ds_bind_ip().c_str(), config_.get_ls_ds_bind_port());
         if (conn->invalid == 0) {
             fill_buffer(conn);
             rcnt = read_event(conn);
         }
         //write
-        check_connected(conn, config_.get_ls_ip().c_str(), config_.get_ls_port());
+        check_connected(conn, config_.get_ls_ds_bind_ip().c_str(), config_.get_ls_ds_bind_port());
         if (conn->invalid == 0) {
             wcnt = send_event(conn);
         }

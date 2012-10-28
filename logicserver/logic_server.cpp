@@ -46,8 +46,6 @@ vector <struct conn_t *> dbserver_conns;
 
 heap <conninfo, greater<conninfo> > conn_timeout;
 
-volatile bool running = false;
-
 static int accept_new_client(int fd) {
     struct sockaddr_in clientaddr;
     socklen_t addrlen = sizeof(clientaddr);
@@ -78,7 +76,7 @@ static int accept_new_client(int fd) {
         if (fd == ds_listen_fd_) {
             conn->mark = CONN_DB_SERVER;
             dbserver_conns.push_back(conn);
-            LOG4CXX_DEBUG(logger_, "data server conn");
+            LOG4CXX_DEBUG(logger_, "data server conn, fd:"<<c_fd);
         }
         else {
             conn->mark = CONN_CLIENT;
@@ -96,7 +94,7 @@ static int proc_data(conn_t* conn) {
         }
         char *buf = sbuf;
         unsigned int ulen = 0;
-        sscanf(conn->readbuf, "%05X", &ulen);
+        sscanf(conn->readbuf, "%05X@", &ulen);
         if ((unsigned int)conn->read_pos < (6 + ulen)) {
             break;
         }
@@ -114,6 +112,7 @@ static int proc_data(conn_t* conn) {
         msg.unserialize(buf+6);
 
         if (conn->mark == CONN_CLIENT) {
+            //TODO
             msg.set_state(1);
         }
         proc_cmd(&msg, conn);
@@ -127,7 +126,7 @@ static int proc_data(conn_t* conn) {
 }
 
 static int net_handle(int fd, int op) {
-    if (fd == client_listen_fd_) {
+    if (fd == client_listen_fd_ || fd == ds_listen_fd_) {
         accept_new_client(fd);
     }
     else {
@@ -221,14 +220,24 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    const char *ip = config_.get_ls_ip().c_str();
-    int port = config_.get_ls_port(); 
+    const char *ip = config_.get_ls_client_bind_ip().c_str();
+    int port = config_.get_ls_client_bind_port(); 
     client_listen_fd_ = open_listener(ip, port);
     if (client_listen_fd_ < 0) {
-        LOG4CXX_ERROR(logger_, "logicserver open_listener() failed");
+        LOG4CXX_ERROR(logger_, "logicserver open_listener() failed, ip:"<<ip<<", port:"<<port);
         event_destroy(handler);
         return 1;
     }
+    ip = config_.get_ls_ds_bind_ip().c_str();
+    port = config_.get_ls_ds_bind_port();
+    ds_listen_fd_ = open_listener(ip, port);
+    if (ds_listen_fd_ < 0) {
+        close(client_listen_fd_);
+        LOG4CXX_ERROR(logger_, "logicserver open_listener() failed, ip:"<<ip<<", port:"<<port);
+        event_destroy(handler);
+        return 1;
+    }
+
     running_ = true;
 
     thread_main(handler);
