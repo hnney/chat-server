@@ -10,12 +10,6 @@
 
 #include "config.h"
 
-
-extern AppConfig config_;
-extern log4cxx::LoggerPtr logger_;
-
-
-
 #define CONN_DB_SERVER 1
 #define CONN_CLIENT    2
 

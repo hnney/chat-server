@@ -1,16 +1,21 @@
 #include "logic_proc.h"
 #include "../net/net_func.h"
 #include "../common/utils.h"
+#include "../common/def.h"
 
 extern map <string, user_t *> idu_map;
 extern map <int, struct conn_t *> fdc_map;
 extern vector <struct conn_t *> dbserver_conns;
 
 static LogicCmd logic_cmd[] = {
+    {CMD_RESERVE, NULL},
     {CMD_LOGIN, proc_login_cmd},
     {CMD_EXIT, proc_exit_cmd},
     {CMD_KA, proc_keepalive_cmd},
 };
+
+extern AppConfig config_;
+extern log4cxx::LoggerPtr logger_;
 
 int proc_cmd(msg_t* msg, conn_t *conn) {
     int ret = -1;
@@ -84,7 +89,7 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
         msg->set_state(2);
         send_to_dbserver(msg);
 
-        conn->invalid_time = hl_timestamp() + 5*1000*1000;
+        conn->invalid_time = hl_timestamp() + CONN_INVALID_TIME;
     }
     else if (msg->state() == 3) {
         map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
@@ -97,16 +102,16 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
 
         if (msg->succ() == 0) {
             user->state = STATE_LOGINED;
-            user->conn->invalid_time = hl_timestamp() + 5*1000*1000;
+            user->conn->invalid_time = hl_timestamp() + CONN_INVALID_TIME;
         }
         else {
             user->state = STATE_AUTH_FAILED;
-	    user->conn->invalid_time = 0;
-            user->conn->data.ptr = 0;
+	        user->conn->invalid_time = 0;
+            //user->conn->data.ptr = 0;
 	}
     }
     else {
-        //LOG4CXX_ERROR(logger_, "proc_login_cmd:"<<(*msg));
+        LOG4CXX_ERROR(logger_, "proc_login_cmd invalid, state;"<<msg->state());
     }
 
     return 0;
@@ -137,7 +142,7 @@ int proc_exit_cmd(msg_t* msg, conn_t* conn) {
         }
     }
     else {
-        //LOG4CXX_ERROR(logger_, "proc_exit_cmd:"<<(*msg));
+        LOG4CXX_ERROR(logger_, "proc_exit_cmd invalid, state:"<<msg->state());
     }
 
     return 0; 
@@ -151,7 +156,8 @@ int proc_keepalive_cmd(msg_t *msg, conn_t *conn) {
         }
         //TODO
     }
-    conn->invalid_time = hl_timestamp() + 5*1000*1000;
+    conn->invalid_time = hl_timestamp() + CONN_INVALID_TIME;
+    send_to_client(msg, conn);
     return 0;
 }
 

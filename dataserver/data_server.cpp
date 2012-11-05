@@ -19,8 +19,6 @@
 
 using namespace std;
 
-static string serv_ip_ = "";
-static int port_ = 0;
 static volatile bool running = false;
 
 AppConfig config_("server.cfg");
@@ -59,20 +57,22 @@ int read_event(conn_t *conn) {
         }   
     }
     int cnt = msg_event.size();
-    push_proc_event(msg_event);
+    if (cnt > 0) {
+        push_proc_event(msg_event);
+    }
     return cnt;
 }
 
 int send_event(conn_t *conn) {
     int cnt = 0;
-    msg_t *msg = pop_proc_event();
+    msg_t *msg = pop_send_event();
     while (msg != NULL) {        
         if (send_to_client(msg, conn) < 0) {
-            push_proc_event(msg); 
+            push_send_event(msg); 
             break;
         }
         delete msg;
-        msg = pop_proc_event();
+        msg = pop_send_event();
         cnt ++;
     }
     return cnt;
@@ -105,7 +105,6 @@ void *event_thread(void *arg) {
             usleep(30);
         }
     }
-
     destroy_conn(conn);
     return NULL;
 }
@@ -120,9 +119,6 @@ void *proc_thread(void *arg) {
         if (proc_cmd(msg, arg) == 0) {
             push_send_event(msg);
         }
-        else {
-            push_proc_event(msg);
-        }
     }
     pthread_exit(NULL);
     return NULL;
@@ -131,38 +127,37 @@ void *proc_thread(void *arg) {
 static void sig_handler(const int sig) {
     cout<<"SIGINT handled. \n";
     running = false;
+    exit(0);
 }
 
 int main(int argc, char **argv) {
-
-    if (argc < 1) {
-        cerr<<"usage: \n";
-        cerr<<"      "<<argv[0]<<" id_num"<<endl; 
-        return 1;
-    }
 
     if (config_.load_config() < 0 ) {
         cerr<<"read server.cfg failed"<<endl;
         return 1;
     }
-    
+
+    if (argc < 2) {
+        cerr<<"usage: ";
+        cerr<<argv[0]<<" id_num"<<endl; 
+        return 1;
+    }
+
     int dsid = atoi(argv[1]);
-    if (dsid < 0 || dsid >= config_.get_ds_number()) {
+    if (dsid < 0 || dsid > config_.get_ds_number()) {
         cerr<<"dsid is invalid"<<endl;
         return 1;
     }
     
     //logger
-    string logcfg = "";
+    string logcfg = "log.conf";
     log4cxx::PropertyConfigurator::configureAndWatch(logcfg);
-    logger_ = log4cxx::Logger::getLogger("XXXX");
+    logger_ = log4cxx::Logger::getLogger("dataserver");
     if (logger_ == NULL) {
         cerr<<"getLogger XXXX failed"<<endl;
         return 1;
     }
 
-    serv_ip_ = config_.get_ds_ip(dsid); 
-    port_ = config_.get_ds_port(dsid); 
 
     int thread_cnt = config_.get_ds_thread_number(); 
     if (thread_cnt < 2) {
@@ -203,7 +198,7 @@ int main(int argc, char **argv) {
         }
     }
     
-    LOG4CXX_INFO(logger_, "dataserver ["<<dsid<<"] start, ip:"<<serv_ip_.c_str()<<" port:"<<port_<<" thnum:"<<thread_cnt);
+    LOG4CXX_INFO(logger_, "dataserver ["<<dsid<<"] start, thnum:"<<thread_cnt);
 
     event_thread(NULL);
 

@@ -1,5 +1,4 @@
 #include "event_queue.h"
-#include "../common/heap.h"
 
 #include <deque>
 #include <vector>

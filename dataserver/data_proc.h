@@ -4,6 +4,7 @@
 #include "../common/msg.h"
 #include "../common/common.h"
 
+
 typedef int (*cmd_callback)(msg_t *msg, void *arg);
 
 typedef struct _logicCmd {
@@ -12,9 +13,10 @@ typedef struct _logicCmd {
 }LogicCmd;
 
 enum CMD_ {
-    CMD_LOGIN = 0, //login
-    CMD_EXIT = 0,
-    CMD_KA = 0,
+    CMD_RESERVE = 0,
+    CMD_LOGIN = 1, //login
+    CMD_EXIT,
+    CMD_KA,
 };
 
 int proc_cmd(msg_t *msg, void *arg);

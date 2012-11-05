@@ -186,7 +186,7 @@ static void sig_handler(const int sig) {
 }
 
 int main(int argc, char **argv) {
-
+    
     /*
     if (argc < 3) {
         cerr<<"usage: "<<argv[0]<<" ip port"<<endl;    
@@ -196,6 +196,12 @@ int main(int argc, char **argv) {
 
     if (config_.load_config() < 0) {
         cerr<<"logicserver read server.cfg failed"<<endl;
+        return 1;
+    }
+
+    if (argc < 2) {
+        cout<<"usage: ";
+        cout<<argv[0]<<" id"<<endl;
         return 1;
     }
 

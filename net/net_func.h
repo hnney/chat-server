@@ -21,6 +21,7 @@ int send_buffer(struct conn_t *conn);
 int send_data(struct conn_t *conn, const void *buf, int len);
 int read_data(struct conn_t *conn, void *buf, int len);
 int send_to_client(msg_t *msg, conn_t* conn);
+int send_msg(struct conn_t *conn, msg_t *msg);
 
 #endif //__NET_UTILS_H__
 
