@@ -26,20 +26,17 @@ int msg_t::serialize_size() {
         ret += sizeof(type_);
     }
     if (hasbits(3)) {
-        ret += sizeof(int);
-        ret += uid_.size();
+        ret += sizestring(uid_);
     }
     if (hasbits(4)) {
-        ret += sizeof(int);
-        ret += tuid_.size();
+        ret += sizestring(tuid_);
     }
     if (hasbits(5)) {
         ret += sizeof(buflen_);
         ret += sizeof(char)*buflen_;
     }
     if (hasbits(6)) {
-        ret += sizeof(int);
-        ret += msg_.size();
+        ret += sizestring(msg_);
     }
     if (hasbits(7)) {
         ret += sizeof(succ_);
