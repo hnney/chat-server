@@ -6,7 +6,7 @@ DBManager::DBManager(const char *host, int port, const char *database, const cha
 
 int DBManager::init(const char *host, int port, const char *database, const char *user, const char *pwd) {
     host_ = host;
-    port = port;
+    port_ = port;
     database_ = database;
     user_ = user;
     pwd_ = pwd;

@@ -15,7 +15,7 @@ static LogicCmd logic_cmd[] = {
 
 int proc_cmd(msg_t* msg, void *arg) {
     int ret = -1;
-    if (msg->cmd() >= 0 && (unsigned int)msg->cmd() < sizeof(logic_cmd)/sizeof(logic_cmd[0])) {
+    if (msg->cmd() > 0 && (unsigned int)msg->cmd() < sizeof(logic_cmd)/sizeof(logic_cmd[0])) {
         ret = (*(logic_cmd[msg->cmd()].callback_))(msg, arg);
     }
     else {

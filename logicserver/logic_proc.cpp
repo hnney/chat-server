@@ -19,7 +19,7 @@ extern log4cxx::LoggerPtr logger_;
 
 int proc_cmd(msg_t* msg, conn_t *conn) {
     int ret = -1;
-    if (msg->cmd() >= 0 && (unsigned int)msg->cmd() < sizeof(logic_cmd)/sizeof(logic_cmd[0])) {
+    if (msg->cmd() > 0 && (unsigned int)msg->cmd() < sizeof(logic_cmd)/sizeof(logic_cmd[0])) {
         ret = (*(logic_cmd[msg->cmd()].callback_))(msg, conn);
     }
     else {
@@ -29,6 +29,10 @@ int proc_cmd(msg_t* msg, conn_t *conn) {
 }
 
 static int send_to_dbserver(msg_t *msg) {
+    if (dbserver_conns.size() == 0) {
+        LOG4CXX_ERROR(logger_, "not has dbserver conns");
+        return 0;
+    }
     static int index = 0;
     int i = (index++) % dbserver_conns.size();
     return send_to_client(msg, dbserver_conns[i]);
@@ -108,7 +112,7 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
             user->state = STATE_AUTH_FAILED;
 	        user->conn->invalid_time = 0;
             //user->conn->data.ptr = 0;
-	}
+	    }
     }
     else {
         LOG4CXX_ERROR(logger_, "proc_login_cmd invalid, state;"<<msg->state());

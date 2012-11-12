@@ -50,6 +50,21 @@ msg_t *pop_proc_event() {
     return msg;
 }
 
+msg_t *try_pop_proc_event() {
+    if (sem_trywait(&sem)) {
+        return NULL;
+    }
+    msg_t *msg = NULL;
+    pthread_mutex_lock(&proc_mutex_);
+    if (event_proc_.size() > 0) {
+        msg = event_proc_.front();
+        event_proc_.pop_front();
+    }
+    pthread_mutex_unlock(&proc_mutex_);
+    return msg;
+}
+
+
 void push_send_event(msg_t *msg) {
     pthread_mutex_lock(&send_mutex_);
     event_send_.push_back(msg);

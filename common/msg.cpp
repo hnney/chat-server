@@ -51,7 +51,7 @@ int msg_t::serialize_size() {
 }
 int msg_t::serialize(char *buf) {
     char *data = buf;
-    saveuint(data, mark_);
+    saveuint(data, htonl(mark_));
     if (hasbits(1)) {
         saveint(data,htonl(cmd_));
     }
@@ -83,7 +83,7 @@ int msg_t::serialize(char *buf) {
 }
 int msg_t::unserialize(char *buf) {
     char *data = buf;
-    mark_ = loaduint(data);
+    mark_ = ntohl(loaduint(data));
     if (hasbits(1)) {
         cmd_ = ntohl(loadint(data));
     }
@@ -124,10 +124,10 @@ ostream& operator <<(ostream &os, msg_t &e) {
         os<<"type:"<<e.type()<<endl;
     }
     if (e.hasbits(3)) {
-        os<<"uid:"<<e.uid()<<endl;
+        os<<"uid:"<<e.uid().c_str()<<endl;
     }
     if (e.hasbits(4)) {
-        os<<"tuid:"<<e.tuid()<<endl;
+        os<<"tuid:"<<e.tuid().c_str()<<endl;
     }
     if (e.hasbits(5)) {
         os<<"buflen:"<<e.buflen()<<endl;//<<",buf:"<<e.buf()<<endl;

@@ -47,6 +47,8 @@ int read_event(conn_t *conn) {
         read_data(conn, buf, ulen+6);
         buf[ulen+6-1] = '\0';
 
+        LOG4CXX_DEBUG(logger_, "ulen:"<<ulen<<" buf:["<<buf<<"]");
+
         msg_t *msg = new msg_t();
         msg->unserialize(buf+6);
         msg_event.push_back(msg);
@@ -82,6 +84,7 @@ void *event_thread(void *arg) {
     conn_t *conn = conn_to_server(config_.get_ls_ds_bind_ip().c_str(), config_.get_ls_ds_bind_port());
     if (conn == NULL) {
         LOG4CXX_ERROR(logger_, "connect to logic server failed");
+        running = 0;
         return NULL;
     }
 
@@ -102,7 +105,7 @@ void *event_thread(void *arg) {
         //TODO
         //如果没有任何事情可以做的话，就休息一阵
         if (rcnt == 0 && wcnt == 0) {
-            usleep(30);
+            usleep(30*1000);
         }
     }
     destroy_conn(conn);

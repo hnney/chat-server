@@ -82,6 +82,9 @@ int myconnect(const char* ip, int port) {
 conn_t *conn_to_server(const char* ip, int port) {
     struct conn_t *conn = NULL;
     int sockfd = myconnect(ip, port);
+    if (sockfd < 0) {
+        return conn;
+    }
     if (set_nonblock_fd(sockfd) < 0) {
         cerr<<"set fd:"<<sockfd<<" non block failed"<<endl;
         close(sockfd);
@@ -101,10 +104,12 @@ int reconn_to_server(conn_t *conn, const char* ip, int port) {
         close(conn->fd);
         conn->fd = -1;
     }   
+    conn->invalid = 0;
     conn->fd = myconnect(ip, port);
-    if (conn->fd > 0) {
-        conn->invalid = 0;
-    }   
+    if (conn->fd <= 0) {
+        conn->invalid = 1;
+        return 0;
+    }
     if (set_nonblock_fd(conn->fd) < 0) {
         cerr<<"reconnect, set nonblock failed"<<endl;
         conn->invalid = 1;
@@ -245,6 +250,7 @@ int send_to_client(msg_t *msg, conn_t* conn) {
     char *buf = conn->writebuf + conn->write_pos;
     sprintf(buf, "%05X@", datalen);
     msg->serialize(buf+6);
+    conn->write_pos += datalen + 6;
     send_buffer(conn);
     return 0;
 }
@@ -259,6 +265,7 @@ int send_msg(conn_t* conn, msg_t *msg) {
     char *buf = conn->writebuf + conn->write_pos;
     sprintf(buf, "%05X@", datalen);
     msg->serialize(buf+6);
+    conn->write_pos += datalen + 6;
     send_buffer(conn);
     return 0;
 }

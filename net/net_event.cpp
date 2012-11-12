@@ -7,6 +7,9 @@
 #define EPOLLRDHUP 0x2000
 #endif
 
+#include <iostream>
+using namespace std;
+
 event_t* event_init (_handle_callback callback, int size)
 {
     struct event_t* handle;
@@ -111,6 +114,7 @@ int event_dispatch (event_t *handle, int timeout) {
                 }
             }
             handle->callback (events[i].data.fd, op);
+            cerr<<"fd:"<<events[i].data.fd<<" event:"<<((op&EV_WRITE)?"write,":"")<<((op&EV_READ)?"read":"")<<endl;;
         }
     //}
     return 0;

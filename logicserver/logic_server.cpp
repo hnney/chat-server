@@ -108,6 +108,8 @@ static int proc_data(conn_t* conn) {
         read_data(conn, buf, ulen+6);
         buf[ulen+6-1] = '\0';
 
+        LOG4CXX_DEBUG(logger_, "ulen:"<<ulen<<" logicserver buf:["<<buf<<"]");
+
         msg_t msg;
         msg.unserialize(buf+6);
 
@@ -158,7 +160,7 @@ static void *thread_main(void *arg) {
     }
     event_t *h = (event_t *)arg;
     while (running_) {
-        event_dispatch(h, 1000);
+        event_dispatch(h, 3000);
         // check conn timeout
         // invalid_time < now
         long long now = hl_timestamp();
@@ -181,7 +183,11 @@ static void *thread_main(void *arg) {
 }
 
 static void sig_handler(const int sig) {
-    LOG4CXX_ERROR(logger_, "logicserver sig_handler "<<sig<<" failed");
+    LOG4CXX_DEBUG(logger_, "logicserver sig_handler "<<sig);
+    if (sig == SA_RESTART) {
+        return;
+    }
+    LOG4CXX_ERROR(logger_, "logicserver sig_handler "<<sig<<", exit");
     running_ = false;
 }
 
@@ -205,9 +211,9 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    string logcfg = "";
+    string logcfg = "log.conf";
     log4cxx::PropertyConfigurator::configureAndWatch(logcfg);
-    logger_ = log4cxx::Logger::getLogger("XXXX");
+    logger_ = log4cxx::Logger::getLogger("logicserver");
     if (logger_ == NULL) {
         cerr<<"logicserver getLogger "<<logcfg.c_str()<<" failed"<<endl;
         return 1;
@@ -234,6 +240,12 @@ int main(int argc, char **argv) {
         event_destroy(handler);
         return 1;
     }
+    if (event_add(handler, client_listen_fd_, EV_READ|EV_WRITE|EV_ET) < 0) {
+        LOG4CXX_ERROR(logger_, "event_add failed ,fd:"<<client_listen_fd_);
+        close(client_listen_fd_);
+        return 1;
+    } 
+    
     ip = config_.get_ls_ds_bind_ip().c_str();
     port = config_.get_ls_ds_bind_port();
     ds_listen_fd_ = open_listener(ip, port);
@@ -243,7 +255,11 @@ int main(int argc, char **argv) {
         event_destroy(handler);
         return 1;
     }
-
+    if (event_add(handler, ds_listen_fd_, EV_READ|EV_WRITE|EV_ET) < 0) {
+        LOG4CXX_ERROR(logger_, "event_add failed ,fd:"<<ds_listen_fd_);
+        close(ds_listen_fd_);
+        return 1;
+    } 
     running_ = true;
 
     thread_main(handler);
