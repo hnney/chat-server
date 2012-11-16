@@ -12,6 +12,7 @@ static LogicCmd logic_cmd[] = {
     {CMD_LOGIN, proc_login_cmd},
     {CMD_EXIT, proc_exit_cmd},
     {CMD_KA, proc_keepalive_cmd},
+    {CMD_TEXT, proc_text_cmd},
 };
 
 extern AppConfig config_;
@@ -165,5 +166,23 @@ int proc_keepalive_cmd(msg_t *msg, conn_t *conn) {
     return 0;
 }
 
-
+int proc_text_cmd(msg_t *msg, conn_t *conn) {
+    user_t *user = (user_t *)conn->data.ptr;
+    if (user == NULL || user->state != STATE_LOGINED) {
+        return -1;
+    }
+    user_t *tuser = NULL;
+    map <string, user_t *>::iterator uiter = idu_map.find(msg->tuid());
+    if (uiter != idu_map.end()) {
+        tuser = uiter->second;
+    }
+    if (tuser == NULL || tuser->state != STATE_LOGINED) {
+        //TODO
+        //msg message
+    }
+    else {
+        send_to_client(msg, tuser->conn);
+    }
+    return 0;
+}
 

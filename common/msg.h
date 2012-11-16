@@ -62,7 +62,7 @@ class msg_t {
         //id = 5;
         int buflen () { return buflen_;}
         char *buf () { return buf_;}
-        void set_buf(char *buf, int len) {
+        void set_buf(const char *buf, int len) {
             if (buf_) {
                 free(buf_);
             }
@@ -87,6 +87,7 @@ class msg_t {
         int state() { return state_;}
         void set_state(int state) {
             state_ = state;
+            setbits(8);
         }
 };
 

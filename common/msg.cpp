@@ -11,6 +11,7 @@ msg_t::msg_t() {
     buf_ = 0;
     succ_ = 0;
     buf_ = NULL;
+    state_ = 0;
 }
 msg_t::~msg_t() {
     if (buf_) {
@@ -46,14 +47,15 @@ int msg_t::serialize_size() {
     }
     return ret;
 }
+//TODO must check Big-Endian and Little-Endian
 int msg_t::serialize(char *buf) {
     char *data = buf;
-    saveuint(data, htonl(mark_));
+    saveuint(data, mark_);
     if (hasbits(1)) {
-        saveint(data,htonl(cmd_));
+        saveint(data,cmd_);
     }
     if (hasbits(2)) {
-        saveint(data,htonl(type_));
+        saveint(data,type_);
     }
     if (hasbits(3)) {
         savestring(data,uid_);
@@ -62,7 +64,7 @@ int msg_t::serialize(char *buf) {
         savestring(data,tuid_);
     }
     if (hasbits(5)) {
-        saveint(data,htonl(buflen_));
+        saveint(data,buflen_);
         if (buflen_ > 0) {
             savebytes(data,buf_,buflen_);
         }
@@ -71,21 +73,21 @@ int msg_t::serialize(char *buf) {
         savestring(data, msg_);
     }
     if (hasbits(7)) {
-        saveint(data, htonl(succ_));
+        saveint(data, succ_);
     }
     if (hasbits(8)) {
-        saveint(data, htonl(state_));
+        saveint(data, state_);
     }
     return data-buf;
 }
 int msg_t::unserialize(char *buf) {
     char *data = buf;
-    mark_ = ntohl(loaduint(data));
+    mark_ = loaduint(data);
     if (hasbits(1)) {
-        cmd_ = ntohl(loadint(data));
+        cmd_ = loadint(data);
     }
     if (hasbits(2)) {
-        type_ = ntohl(loadint(data));
+        type_ = loadint(data);
     }
     if (hasbits(3)) {
         uid_ = loadstring(data);
@@ -94,7 +96,7 @@ int msg_t::unserialize(char *buf) {
         tuid_ = loadstring(data);
     }
     if (hasbits(5)) {
-        buflen_ = ntohl(loadint(data));
+        buflen_ = loadint(data);
         buf_ = NULL;
         if (buflen_ > 0) {
             buf_ = (char*)malloc(sizeof(char)*buflen_);
@@ -105,10 +107,10 @@ int msg_t::unserialize(char *buf) {
         msg_ = loadstring(data); 
     }
     if (hasbits(7)) {
-        succ_ = ntohl(loadint(data));
+        succ_ = loadint(data);
     }
     if (hasbits(8)) {
-        state_ = ntohl(loadint(data));
+        state_ = loadint(data);
     }
     return data-buf;
 }

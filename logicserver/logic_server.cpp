@@ -87,6 +87,7 @@ static int accept_new_client(int fd) {
 
 static int proc_data(conn_t* conn) {
     static char sbuf[8192];
+    int cnt = 0;
     while (1) {
         //proc all msg event
         if (conn->read_pos <= 6) {
@@ -108,23 +109,23 @@ static int proc_data(conn_t* conn) {
         read_data(conn, buf, ulen+6);
         buf[ulen+6-1] = '\0';
 
-        LOG4CXX_DEBUG(logger_, "ulen:"<<ulen<<" logicserver buf:["<<buf<<"]");
-
         msg_t msg;
         msg.unserialize(buf+6);
+        //cout<<(msg)<<endl;
 
         if (conn->mark == CONN_CLIENT) {
             //TODO
             msg.set_state(1);
         }
         proc_cmd(&msg, conn);
+        cnt ++;
 
         if (buf != sbuf) {
             free(buf);
             buf = NULL;
         }
     }
-    return 0;
+    return cnt;
 }
 
 static int net_handle(int fd, int op) {
@@ -140,9 +141,9 @@ static int net_handle(int fd, int op) {
         conn_t *conn = fditer->second;
         int rl = 0, wl = 0;
         if (op & EV_READ) {
-            rl = fill_buffer(conn); 
+            fill_buffer(conn); 
             //read data
-            proc_data(conn);
+            rl = proc_data(conn);
         }
         if(op & EV_WRITE) {
             //write data
@@ -164,6 +165,7 @@ static void *thread_main(void *arg) {
         // check conn timeout
         // invalid_time < now
         long long now = hl_timestamp();
+        continue;
         while (conn_timeout.size() > 0 && conn_timeout.top().conn->invalid_time < now) {
             conn_t *conn = conn_timeout.top().conn;
             conn_timeout.pop();

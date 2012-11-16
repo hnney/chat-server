@@ -11,21 +11,11 @@ typedef struct _logicCmd {
     cmd_callback callback_;
 }LogicCmd;
 
-enum CMD_ {
-    CMD_RESERVE = 0,
-    CMD_LOGIN = 1, //login
-    CMD_EXIT,
-    CMD_KA,
-};
-
 int proc_cmd(msg_t *msg, conn_t *conn);
-
 int proc_login_cmd(msg_t *msg, conn_t *conn);
-
 int proc_exit_cmd(msg_t *msg, conn_t *conn);
-
 int proc_keepalive_cmd(msg_t *msg, conn_t *conn); 
-
+int proc_text_cmd(msg_t *msg, conn_t *conn);
 
 void clean_conn(conn_t *conn);
 void clean_user(user_t *user);

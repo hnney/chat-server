@@ -47,7 +47,9 @@ int read_event(conn_t *conn) {
         read_data(conn, buf, ulen+6);
         buf[ulen+6-1] = '\0';
 
+        cerr<<ulen<<endl;
         LOG4CXX_DEBUG(logger_, "ulen:"<<ulen<<" buf:["<<buf<<"]");
+        cerr<<ulen<<endl;
 
         msg_t *msg = new msg_t();
         msg->unserialize(buf+6);
@@ -83,13 +85,13 @@ int send_event(conn_t *conn) {
 void *event_thread(void *arg) {
     conn_t *conn = conn_to_server(config_.get_ls_ds_bind_ip().c_str(), config_.get_ls_ds_bind_port());
     if (conn == NULL) {
-        LOG4CXX_ERROR(logger_, "connect to logic server failed");
-        running = 0;
+        running = false;
         return NULL;
     }
 
     int rcnt = 0;
     int wcnt = 0;
+    cout<<"event_thread"<<endl;
     while(running) {
         //read
         check_connected(conn, config_.get_ls_ds_bind_ip().c_str(), config_.get_ls_ds_bind_port());
@@ -105,7 +107,7 @@ void *event_thread(void *arg) {
         //TODO
         //如果没有任何事情可以做的话，就休息一阵
         if (rcnt == 0 && wcnt == 0) {
-            usleep(30*1000);
+            usleep(300);
         }
     }
     destroy_conn(conn);
@@ -119,7 +121,7 @@ void *proc_thread(void *arg) {
     }
     while(running) {
         msg_t *msg = pop_proc_event(); 
-        if (proc_cmd(msg, arg) == 0) {
+        if (msg != NULL && proc_cmd(msg, arg) == 0) {
             push_send_event(msg);
         }
     }
@@ -157,15 +159,17 @@ int main(int argc, char **argv) {
     log4cxx::PropertyConfigurator::configureAndWatch(logcfg);
     logger_ = log4cxx::Logger::getLogger("dataserver");
     if (logger_ == NULL) {
-        cerr<<"getLogger XXXX failed"<<endl;
+        cerr<<"getLogger dataserver failed"<<endl;
         return 1;
     }
 
 
     int thread_cnt = config_.get_ds_thread_number(); 
+    /*
     if (thread_cnt < 2) {
         thread_cnt = 2;
     }
+    */
 
     if (sigignore(SIGPIPE) == -1) {
         LOG4CXX_ERROR(logger_, "dataserver sigignore SIGPIPE failed, exit");
