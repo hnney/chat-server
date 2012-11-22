@@ -12,6 +12,7 @@ template <typename T, typename CMP> class heap {
         ~heap();
 
         size_t push(const T &element);
+        void sort();
         T pop(void);
         size_t size(void);
         T top(void);
@@ -37,6 +38,12 @@ template <typename T, typename CMP> size_t heap<T,CMP>::push(const T &element)
     size_++;
     push_heap(data_.begin(), data_.begin()+size_, CMP());
     return size_;
+}
+
+template <typename T, typename CMP> void heap<T,CMP>::sort() {
+    if (size_ > 0) {
+        make_heap(data_.begin(), data_.end(), CMP());
+    }
 }
 
 template <typename T, typename CMP> T heap<T,CMP>::pop(void)

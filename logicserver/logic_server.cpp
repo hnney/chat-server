@@ -149,6 +149,11 @@ static int net_handle(int fd, int op) {
             //write data
             wl = send_buffer(conn);
         }
+        if (conn->invalid) {
+            LOG4CXX_DEBUG(logger_, "conn_timeout afresh make_heap");
+            conn->invalid_time = 0;
+            conn_timeout.sort();
+        }
         LOG4CXX_DEBUG(logger_, "logicserver rec:"<<rl<<" wl:"<<wl);
     }
     return 0;
@@ -161,20 +166,21 @@ static void *thread_main(void *arg) {
     }
     event_t *h = (event_t *)arg;
     while (running_) {
-        event_dispatch(h, 3000);
+        event_dispatch(h, 30);
         // check conn timeout
         // invalid_time < now
         long long now = hl_timestamp();
-        continue;
         while (conn_timeout.size() > 0 && conn_timeout.top().conn->invalid_time < now) {
             conn_t *conn = conn_timeout.top().conn;
             conn_timeout.pop();
 
             //TODO
+            LOG4CXX_DEBUG(logger_, "conn is invalid, fd:"<<conn->fd);
             if (conn->data.ptr != NULL) {
                 user_t *user = (user_t *)conn->data.ptr;
                 send_user_exit(user);
                 clean_user(user);
+                LOG4CXX_DEBUG(logger_, "user exit, uid:"<<user->uid);
             } 
             else {
                 clean_conn(conn);
