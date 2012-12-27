@@ -20,6 +20,18 @@ public:
     bool connectMysql();
     void closeMysql();
 
+    int getStoreData(const char *sql, StoreQueryResult &result);
+    int getUser(const char *name, StoreQueryResult &result);
+    int getUserInfo(int user_id, StoreQueryResult &result) ;
+    int getUserState(int user_id, StoreQueryResult &result);
+    int getFriends(int user_id, StoreQueryResult &result);
+    int getGroupInfo(int group_id, StoreQueryResult &result);
+    int getGroupMembers(int group_id, StoreQueryResult &result);
+    int getUserGroups(int user_id, StoreQueryResult &result);
+    int getTalkInfo(int talk_id, StoreQueryResult &result);
+    int getTalkMembers(int talk_id, StoreQueryResult &result);
+    int getUserTalks(int user_id, StoreQueryResult &result);
+
 private:
 
     Connection conn_;

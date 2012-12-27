@@ -12,6 +12,7 @@ msg_t::msg_t() {
     succ_ = 0;
     buf_ = NULL;
     state_ = 0;
+    type_ = 0;
 }
 msg_t::~msg_t() {
     if (buf_) {
