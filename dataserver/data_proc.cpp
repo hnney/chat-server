@@ -5,6 +5,7 @@
 #include "../common/md5.h"
 #include "../common/dbmanager.h"
 #include "../json/json_util.h"
+#include "../common/msginterface.h"
 
 extern AppConfig config_;
 extern log4cxx::LoggerPtr logger_;
@@ -57,6 +58,7 @@ int proc_login_cmd (msg_t *msg, void *arg) {
         }   
          
         if (succ == 0) {
+            dbm->setUserState(dbinterface.dbuser.user_id, STATE_LOGINED);
             msg->set_user_id(dbinterface.dbuser.user_id);
             //get_user_info
             if (!dbm->getUserInfo(dbinterface.dbuser.user_id, dbinterface.dbuser)) {
@@ -133,7 +135,7 @@ int proc_login_cmd (msg_t *msg, void *arg) {
         //TODO test
         msg->set_succ(succ);
         Value msgjson(objectValue);
-        //buildDBInterfaceJson(msgjson, dbinterface);
+        buildDBInterfaceJson(msgjson, dbinterface);
         string msgstr = getJsonStr(msgjson); 
         msg->set_msg(msgstr);
         msg->set_state(3);

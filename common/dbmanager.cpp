@@ -115,7 +115,6 @@ bool DBManager::connectMysql(Connection &conn) {
     }
     conn.set_option(new MultiStatementsOption(CLIENT_MULTI_STATEMENTS));
     if (conn.connect(database_.c_str(), host_.c_str(), user_.c_str(), pwd_.c_str(), port_)){
-	conn.select_db("hdm0210494_db");
         Query q = conn.query("set names utf8");
         q.execute();
         return true;
@@ -126,17 +125,46 @@ bool DBManager::connectMysql(Connection &conn) {
     }
 }
 
+int DBManager::execSql(const char *sql) {
+    try {
+        Query query = conn_.query();
+        query<<sql;
+        query.execute();
+    }
+    catch(mysqlpp::BadQuery& er) {
+        cerr<<"exec sql failed, ["<<sql<<"], err:"<<er.what()<<endl;
+    }
+    catch (const mysqlpp::Exception& er) {
+        cerr<<"exec sql failed, ["<<sql<<"], err:"<<er.what()<<endl;
+    } 
+    return 1;
+}
+
 int DBManager::getStoreData(const char *sql, StoreQueryResult &result) {
     int ret = 0;
-    Query query = conn_.query();
-    query<<sql;
-    result = query.store();
-    if (result) {
-        ret = 1;
+    try {
+        Query query = conn_.query();
+        query<<sql;
+        result = query.store();
+        if (result) {
+            ret = 1;
+        }
+        StoreQueryResult res;
+        for (int i = 1; query.more_results(); ++i) {
+            res = query.store_next();
+        }
     }
-    StoreQueryResult res;
-    for (int i = 1; query.more_results(); ++i) {
-        res = query.store_next();
+    catch (const mysqlpp::BadQuery& er) {
+        cerr<<"getstore failed:["<<sql<<"], err:"<<er.what()<<endl;
+    }
+    catch (const mysqlpp::BadConversion& er) {
+        cerr<<"getstare failed:["<<sql<<"], err:"<<er.what()<<endl;
+    }
+    catch (const mysqlpp::Exception& er) {
+         cerr<<"getstare failed:["<<sql<<"], err:"<<er.what()<<endl;
+    }
+    catch(...) {
+        cerr<<"getStareData faield, sql:"<<sql<<endl;
     }
     return ret;
 }
@@ -172,17 +200,17 @@ int DBManager::getUser(const char *name, DBUser &dbu) {
 }
 
 int DBManager::getUserInfo(int user_id, DBUser &dbu) {
-    char sqlui[128];
-    //sprintf(sqlui, "select `user_id`,`user_type`,`user_truename`,`user_sex`,`user_height`,`user_weight`,"
-    //               "`user_job`,`user_national`,`user_birthday`,`user_pic`,`user_experience` from user_info"
-    //               " where `user_id`='%d'", user_id); 
-    sprintf(sqlui, "select * from `user_info` where `user_id`='%d'", user_id);
+    char sqlui[256];
+    sprintf(sqlui, "select `user_id`,`user_type`,`user_truename`,`user_sex`,"
+                   "`user_height`,`user_weight`,`user_job`,`user_national`,"
+                   "`user_birthday`,`user_pic`,`user_experience` from user_info "
+                   " where `user_id`='%d'", user_id); 
+    //sprintf(sqlui, "select * from `user_info` where `user_id`='%d'", user_id);
     int ret = 0;
     StoreQueryResult result;
     if (getStoreData(sqlui, result)) {
         if (result.num_rows() > 0 && result[0].size() >= 11) {
-            /*
-            dbu.user_id = atoi(result[0][0].c_str());
+            //dbu.user_id = atoi(result[0][0].c_str());
             dbu.type = result[0][1].c_str();
             dbu.truename = result[0][2].c_str();
             dbu.sex = result[0][3].c_str();
@@ -190,9 +218,9 @@ int DBManager::getUserInfo(int user_id, DBUser &dbu) {
             dbu.weight = result[0][5].c_str();
             dbu.job = result[0][6].c_str(); 
             dbu.place = result[0][7].c_str();
-            dbu.headurl = result[0][8].c_str();
-            dbu.experience = result[0][9].c_str();
-            */
+            dbu.birthday = result[0][8].c_str();
+            dbu.headurl = result[0][9].c_str();
+            dbu.experience = result[0][10].c_str();
         }
         ret = 1;
     }
@@ -211,10 +239,19 @@ int DBManager::getUserState(int user_id, DBUser &dbu) {
         }
         else {
             //TODO insert record
+            sprintf(sqlu, "insert into `user_state`(`user_id`, `state`, `invited`) values('%d','0','0')",user_id);
+            execSql(sqlu);
         }
         ret = 1;
     } 
     return ret;
+}
+
+int DBManager::setUserState(int user_id, int state) { 
+    char sql[128];
+    sprintf(sql, "update `user_state` set `state`='%d' where `user_id`='%d'", state, user_id);
+    execSql(sql);
+    return 1; 
 }
 
 int DBManager::getFriends(int user_id, vector <DBFriend> &dbfriends) {
@@ -331,7 +368,7 @@ int DBManager::getTalkMembers(int talk_id, DBTalks &dbtalks) {
 
 int DBManager::getUserTalks(int user_id, vector <DBTalks> &talks) {
     static char sqlut[256];
-    sprintf(sqlut, "select `talk_id` from `user_talks_members` where `user_id`='%d'", user_id);
+    sprintf(sqlut, "select `talks_id` from `user_talks_members` where `user_id`='%d'", user_id);
     int ret = 0;
     StoreQueryResult res;
     if (getStoreData(sqlut, res)) {
@@ -351,7 +388,8 @@ int DBManager::getUserTalks(int user_id, vector <DBTalks> &talks) {
 #ifdef TEST_
 int main(int argc, char **argv) {
     DBManager dbm;
-    dbm.init("localhost", 3306, argv[1], argv[2], "arebank2012!@");
+    string p = string(argv[5]) + "!@";
+    dbm.init("localhost", 3306, argv[1], argv[2], p.c_str());
     if (!dbm.connectMysql()) {
         cout<<"connect failed"<<endl;
         return 1;
@@ -403,6 +441,7 @@ int main(int argc, char **argv) {
  		}
             }
         }
+        dbm.setUserState(dbu.user_id, 1);
     }
     else {
         cout<<"get User failed"<<endl;

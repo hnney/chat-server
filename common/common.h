@@ -50,51 +50,13 @@ class conninfo {
             return conn->invalid_time > obj.conn->invalid_time;
         }
 };
-/*
-class person_t {
-    public:
-        person_t() {}
-        virtual ~person_t() {}
-        string  uid;
-        string  nickname;
-        int id_;
-};
-
-class friend_t : public person_t {
-    public:
-        friend_t(){}
-        virtual ~friend_t(){}
-        string  type;
-        string  remark;
-};
-
-class group_t : public person_t {
-    public:
-        group_t(){}
-        virtual ~group_t(){}
-        vector <person_t>   members;
-};
-*/
 
 #define STATE_WAIT_LOGIN 0 
 #define STATE_LOGINED 1
 #define STATE_EXIT 2
 #define STATE_DISCONNECT 3
 #define STATE_AUTH_FAILED 4
-/*
-class user_t_ : public person_t {
-    public:
-        user_t(){
-            conn = NULL;
-        }
-        virtual ~user_t(){}
-        vector <friend_t>   friends;
-        vector <group_t>    groups;
-        conn_t* conn;
-        int     state;
-        //other msg
-};
-*/
+
 class user_t {
     public:
         string uid;

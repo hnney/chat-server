@@ -3,6 +3,8 @@
 
 #include "../common/msg.h"
 #include "../common/common.h"
+#include "../json/json_util.h"
+#include "../common/dbstruct.h"
 
 
 typedef int (*cmd_callback)(msg_t *msg, void *arg);
@@ -29,6 +31,7 @@ int proc_keepalive_cmd(msg_t *msg, void *arg);
 
 void clean_conn(conn_t *conn);
 void send_keepalive(conn_t *conn);
+
 
 #endif //__LOGIC_PROC_CMD_H__
 

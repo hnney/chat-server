@@ -110,12 +110,16 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
             user->conn->invalid_time = hl_timestamp() + CONN_INVALID_TIME;
             //parse dbinterface msg
             //TODO
+            Value json =  parseJsonStr(msg->msg());
+            
+            //get user id, get user firends, get_groups get friends
+            //TODO
         }
         else {
             user->state = STATE_AUTH_FAILED;
-	        user->conn->invalid_time = 0;
+	    user->conn->invalid_time = 0;
             //user->conn->data.ptr = 0;
-	    }
+	}
     }
     else {
         LOG4CXX_ERROR(logger_, "proc_login_cmd invalid, state;"<<msg->state());

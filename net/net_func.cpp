@@ -1,5 +1,6 @@
 #include "net_func.h"
 #include "../common/utils.h"
+#include "../common/def.h"
 
 #include <fcntl.h>
 #include <sys/types.h>
@@ -140,7 +141,7 @@ conn_t* create_conn(int fd, int readbuf_size, int writebuf_size) {
         conn->write_pos = 0;
         conn->invalid = 0;
         conn->data.ptr = NULL;
-        conn->invalid_time = hl_timestamp() + 30 * 1000 * 1000LL;
+        conn->invalid_time = hl_timestamp() + CONN_INVALID_TIME;
         conn->readbuf = (char *)malloc(sizeof(char)*readbuf_size);
         conn->writebuf = (char *)malloc(sizeof(char)*writebuf_size);
         if (conn->readbuf == NULL || conn->writebuf == NULL) {

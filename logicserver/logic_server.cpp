@@ -71,7 +71,7 @@ static int accept_new_client(int fd) {
             destroy_conn(conn);
             continue;
         }
-        conn_timeout.push(conninfo(conn));
+        //conn_timeout.push(conninfo(conn));
         fdc_map[c_fd] = conn;
 
         if (fd == ds_listen_fd_) {
@@ -80,6 +80,7 @@ static int accept_new_client(int fd) {
             LOG4CXX_DEBUG(logger_, "data server conn, fd:"<<c_fd);
         }
         else {
+            conn_timeout.push(conninfo(conn));
             conn->mark = CONN_CLIENT;
         }
     } 
@@ -184,7 +185,7 @@ static void *thread_main(void *arg) {
                 LOG4CXX_DEBUG(logger_, "user exit, uid:"<<user->uid);
             } 
             else {
-                clean_conn(conn);
+                //clean_conn(conn);
             }
         }
     }
