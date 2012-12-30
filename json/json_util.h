@@ -3,7 +3,7 @@
 #include <string>
 #include <sstream>
 #include "json.h"
-#include "../utils/utils.h"
+#include "../common/utils.h"
 
 using namespace std;
 using namespace Json;

@@ -13,6 +13,7 @@ msg_t::msg_t() {
     buf_ = NULL;
     state_ = 0;
     type_ = 0;
+    user_id_ = 0;
 }
 msg_t::~msg_t() {
     if (buf_) {
@@ -45,6 +46,9 @@ int msg_t::serialize_size() {
     }
     if (hasbits(8)) {
         ret += sizeof(state_);
+    }
+    if (hasbits(9)) {
+        ret += sizeof(user_id_);
     }
     return ret;
 }
@@ -79,6 +83,9 @@ int msg_t::serialize(char *buf) {
     if (hasbits(8)) {
         saveint(data, state_);
     }
+    if (hasbits(9)) {
+        saveint(data, user_id_);
+    }
     return data-buf;
 }
 int msg_t::unserialize(char *buf) {
@@ -112,6 +119,9 @@ int msg_t::unserialize(char *buf) {
     }
     if (hasbits(8)) {
         state_ = loadint(data);
+    }
+    if (hasbits(9)) {
+        user_id_ = loadint(data);
     }
     return data-buf;
 }

@@ -22,6 +22,8 @@ class msg_t {
         string tuid_;
         string msg_;
 
+        int user_id_;
+
         unsigned int mark_;
         void setbits(int index) { mark_ |= 1<<index; }
         bool hasbits(int index) { return (mark_ & 1<<index) != 0; }
@@ -89,6 +91,12 @@ class msg_t {
             state_ = state;
             setbits(8);
         }
+        //id = 9
+        int user_id() { return user_id_;}
+        void set_user_id(int id) {
+            user_id_ = id;
+            setbits(9);
+        } 
 };
 
 #endif

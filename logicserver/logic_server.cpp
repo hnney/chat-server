@@ -41,6 +41,7 @@ static int ds_listen_fd_ = -1;
 static event_t *handler = NULL;
 
 map <string, user_t *> idu_map;
+map <int, user_t *> user_map;
 map <int, struct conn_t *> fdc_map;
 vector <struct conn_t *> dbserver_conns;
 

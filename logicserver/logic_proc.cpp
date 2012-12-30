@@ -108,6 +108,8 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
         if (msg->succ() == 0) {
             user->state = STATE_LOGINED;
             user->conn->invalid_time = hl_timestamp() + CONN_INVALID_TIME;
+            //parse dbinterface msg
+            //TODO
         }
         else {
             user->state = STATE_AUTH_FAILED;
@@ -185,4 +187,7 @@ int proc_text_cmd(msg_t *msg, conn_t *conn) {
     }
     return 0;
 }
+
+
+// 
 
