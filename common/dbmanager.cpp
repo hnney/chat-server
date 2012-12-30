@@ -380,33 +380,29 @@ int main(int argc, char **argv) {
         ret = dbm.getFriends(dbu.user_id, dbfriends);
         if (ret) {
             for (size_t i = 0; i < dbfriends.size(); i++) {
-	        cout<<dbfriends[i].friend_id<<" "<<dbfriends[i].type<<endl;
+	        cout<<dbfriends[i].dbuser.user_id<<" "<<dbfriends[i].type<<endl;
             }
         }
-        /*
-        vector <int> usergroups;
+        vector <DBGroup> usergroups;
         ret = dbm.getUserGroups(dbu.user_id, usergroups);
         if (ret) {
             cout<<"user:"<<dbu.user_id<<" groups:"<<endl;
             for (size_t i = 0; i < usergroups.size(); i++) {
-                cout<<usergroups[i]<<" "<<endl;
-                DBGroup dbgroup;
-                if (dbm.getGroupInfo(usergroups[i],dbgroup)) {
-                    dbgroup.group_id = usergroups[i];
-                    cout<<dbgroup.name<<" "<<dbgroup.notice<<" "<<dbgroup.headurl<<endl;
+                cout<<usergroups[i].group_id<<" "<<endl;
+                if (dbm.getGroupInfo(usergroups[i].group_id, usergroups[i])) {
+                    cout<<usergroups[i].name<<" "<<usergroups[i].notice<<" "<<usergroups[i].headurl<<endl;
                 } 
-                if (dbgroup.group_id > 0) {
-               	    if (dbm.getGroupMembers(dbgroup.group_id, dbgroup)) {
+                if (usergroups[i].group_id > 0) {
+               	    if (dbm.getGroupMembers(usergroups[i].group_id, usergroups[i])) {
 			cout<<"members:"<<endl;
-                        for (size_t i = 0; i < dbgroup.members.size(); i++) {
-			    cout<<dbgroup.members[i].user_id<<" ";
+                        for (size_t j = 0; j < usergroups[i].members.size(); j++) {
+			    cout<<usergroups[i].members[j].user_id<<" ";
  			}
 			cout<<endl;
 		    }
  		}
             }
         }
-        */
     }
     else {
         cout<<"get User failed"<<endl;
