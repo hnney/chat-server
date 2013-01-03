@@ -3,6 +3,7 @@
 
 #include "../common/msg.h"
 #include "../common/common.h"
+#include "../json/json_util.h"
 
 typedef int (*cmd_callback)(msg_t *msg, conn_t *conn);
 

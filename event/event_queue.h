@@ -27,6 +27,7 @@ class event_t {
 void push_proc_event(msg_t *msg);
 void push_proc_event(vector<msg_t *>& msgs);
 msg_t *pop_proc_event();
+msg_t *try_pop_proc_event();
 
 void push_send_event(msg_t *msg);
 void push_send_event(vector <msg_t *>& msgs);

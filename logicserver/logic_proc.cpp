@@ -2,17 +2,33 @@
 #include "../net/net_func.h"
 #include "../common/utils.h"
 #include "../common/def.h"
+#include "../common/dbstruct.h"
+#include "../common/msginterface.h"
 
 extern map <string, user_t *> idu_map;
 extern map <int, struct conn_t *> fdc_map;
 extern vector <struct conn_t *> dbserver_conns;
+extern map <int, vector <int> > user_groups_;
+extern map <int, vector <int> > user_talks_;
 
 static LogicCmd logic_cmd[] = {
-    {CMD_RESERVE, NULL},
-    {CMD_LOGIN, proc_login_cmd},
-    {CMD_EXIT, proc_exit_cmd},
-    {CMD_KA, proc_keepalive_cmd},
-    {CMD_TEXT, proc_text_cmd},
+    {CMD_RESERVE, NULL},   //0
+    {CMD_LOGIN, proc_login_cmd}, //1
+    {CMD_GET_FRIEND, NULL},  //2
+    {CMD_GET_GROUPINFO, NULL}, //3
+    {CMD_EXIT, proc_exit_cmd}, //4
+    {CMD_TEXT, proc_text_cmd}, //5
+    {CMD_TRANS_FILE, NULL}, //6
+    {CMD_SHARE_FILE, NULL}, //7
+    {CMD_TRANS_VIDEO, NULL}, //8
+    {CMD_MODIFY_INFO, NULL}, //9
+    {CMD_MODIFY_GROUP_INFO, NULL}, //10
+    {CMD_MODIFY_FRIEND, NULL}, //11
+    {CMD_GETALL_USERS, NULL}, //12
+    {CMD_FIND_USER, NULL}, //13
+    {CMD_ADD_FRIEND, NULL}, //14
+    {CMD_DEL_FRIEND, NULL}, //15
+    {CMD_KA, proc_keepalive_cmd}, //16
 };
 
 extern AppConfig config_;
@@ -111,9 +127,31 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
             //parse dbinterface msg
             //TODO
             Value json =  parseJsonStr(msg->msg());
-            
+            DBInterface dbinterface;
+            parse_dbinterface(json, dbinterface); 
             //get user id, get user firends, get_groups get friends
-            //TODO
+            user->id = dbinterface.dbuser.user_id;
+            for (size_t i = 0; i < dbinterface.dbfriends.size(); i++) {
+                user->friend_ids.push_back(dbinterface.dbfriends[i].dbuser.user_id); 
+            } 
+            for (size_t i = 0; i < dbinterface.dbgroups.size(); i++) {
+                user->group_ids.push_back(dbinterface.dbgroups[i].group_id);
+                //update group
+                vector <int> &members = user_groups_[dbinterface.dbgroups[i].group_id];
+                members.clear();
+                for (size_t j = 0; j < dbinterface.dbgroups[i].members.size(); j++) {
+                    members.push_back(dbinterface.dbgroups[i].members[i].user_id);
+                }
+            }
+            for (size_t i = 0; i < dbinterface.dbtalks.size(); i++) {
+                user->talk_ids.push_back(dbinterface.dbtalks[i].talk_id);
+                //update talks
+                vector <int> &members = user_talks_[dbinterface.dbtalks[i].talk_id];
+                members.clear();
+                for (size_t j = 0; j < dbinterface.dbtalks[i].members.size(); j++) {
+                    members.push_back(dbinterface.dbtalks[i].members[i].user_id);
+                }
+            }
         }
         else {
             user->state = STATE_AUTH_FAILED;
@@ -166,9 +204,9 @@ int proc_keepalive_cmd(msg_t *msg, conn_t *conn) {
             return 1;
         }
         //TODO
+    	send_to_client(msg, conn);
     }
     conn->invalid_time = hl_timestamp() + CONN_INVALID_TIME;
-    send_to_client(msg, conn);
     return 0;
 }
 

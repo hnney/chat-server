@@ -6,14 +6,27 @@
 #include "../common/dbmanager.h"
 #include "../json/json_util.h"
 #include "../common/msginterface.h"
+#include "../common/def.h"
 
 extern AppConfig config_;
 extern log4cxx::LoggerPtr logger_;
-
 static LogicCmd logic_cmd[] = {
     {CMD_RESERVE, NULL},
     {CMD_LOGIN, proc_login_cmd},
+    {CMD_GET_FRIEND, NULL},
+    {CMD_GET_GROUPINFO, NULL},
     {CMD_EXIT, proc_exit_cmd},
+    {CMD_TEXT, NULL},
+    {CMD_TRANS_FILE, NULL},
+    {CMD_SHARE_FILE, NULL},
+    {CMD_TRANS_VIDEO, NULL},
+    {CMD_MODIFY_INFO, NULL},
+    {CMD_MODIFY_GROUP_INFO, NULL},
+    {CMD_MODIFY_FRIEND, NULL},
+    {CMD_GETALL_USERS, NULL},
+    {CMD_FIND_USER, NULL},
+    {CMD_ADD_FRIEND, NULL},
+    {CMD_DEL_FRIEND, NULL},
     {CMD_KA, proc_keepalive_cmd},
 };
 
@@ -28,11 +41,12 @@ int proc_cmd(msg_t* msg, void *arg) {
     return ret;
 }
 
-/*
-void send_keepalive(conn_t *conn, msg_t *msg) {
+void send_keepalive() {
     //TODO
+    msg_t *msg = new msg_t();
+    msg->set_cmd(CMD_KA);
+    push_send_event(msg);
 }
-*/
 
 int proc_login_cmd (msg_t *msg, void *arg) {
     if (arg == NULL || msg == NULL) return -1;

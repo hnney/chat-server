@@ -45,6 +45,9 @@ map <int, user_t *> user_map;
 map <int, struct conn_t *> fdc_map;
 vector <struct conn_t *> dbserver_conns;
 
+map <int, vector <int> > user_groups_;
+map <int, vector <int> > user_talks_;
+
 heap <conninfo, greater<conninfo> > conn_timeout;
 
 static int accept_new_client(int fd) {
@@ -71,7 +74,7 @@ static int accept_new_client(int fd) {
             destroy_conn(conn);
             continue;
         }
-        //conn_timeout.push(conninfo(conn));
+        conn_timeout.push(conninfo(conn));
         fdc_map[c_fd] = conn;
 
         if (fd == ds_listen_fd_) {
@@ -80,7 +83,6 @@ static int accept_new_client(int fd) {
             LOG4CXX_DEBUG(logger_, "data server conn, fd:"<<c_fd);
         }
         else {
-            conn_timeout.push(conninfo(conn));
             conn->mark = CONN_CLIENT;
         }
     } 
@@ -152,11 +154,11 @@ static int net_handle(int fd, int op) {
             wl = send_buffer(conn);
         }
         if (conn->invalid) {
-            LOG4CXX_DEBUG(logger_, "conn_timeout afresh make_heap");
+            LOG4CXX_DEBUG(logger_, "conn_timeout afresh make_heap, fd:"<<conn->fd);
             conn->invalid_time = 0;
             conn_timeout.sort();
         }
-        LOG4CXX_DEBUG(logger_, "logicserver rec:"<<rl<<" wl:"<<wl);
+        LOG4CXX_DEBUG(logger_, "logicserver recv:"<<rl<<" write:"<<wl);
     }
     return 0;
 }
@@ -177,7 +179,7 @@ static void *thread_main(void *arg) {
             conn_timeout.pop();
 
             //TODO
-            LOG4CXX_DEBUG(logger_, "conn is invalid, fd:"<<conn->fd);
+            LOG4CXX_DEBUG(logger_, "conn is invalid, fd:"<<conn->fd<<" now:"<<now<<" invalid_t:"<<conn->invalid_time);
             if (conn->data.ptr != NULL) {
                 user_t *user = (user_t *)conn->data.ptr;
                 send_user_exit(user);
@@ -185,7 +187,7 @@ static void *thread_main(void *arg) {
                 LOG4CXX_DEBUG(logger_, "user exit, uid:"<<user->uid);
             } 
             else {
-                //clean_conn(conn);
+                clean_conn(conn);
             }
         }
     }
@@ -193,11 +195,11 @@ static void *thread_main(void *arg) {
 }
 
 static void sig_handler(const int sig) {
-    LOG4CXX_DEBUG(logger_, "logicserver sig_handler "<<sig);
+    //LOG4CXX_DEBUG(logger_, "logicserver sig_handler "<<sig);
     if (sig == SA_RESTART) {
         return;
     }
-    LOG4CXX_ERROR(logger_, "logicserver sig_handler "<<sig<<", exit");
+    //LOG4CXX_ERROR(logger_, "logicserver sig_handler "<<sig<<", exit");
     running_ = false;
 }
 

@@ -47,9 +47,7 @@ int read_event(conn_t *conn) {
         read_data(conn, buf, ulen+6);
         buf[ulen+6-1] = '\0';
 
-        cerr<<ulen<<endl;
         LOG4CXX_DEBUG(logger_, "ulen:"<<ulen<<" buf:["<<buf<<"]");
-        cerr<<ulen<<endl;
 
         msg_t *msg = new msg_t();
         msg->unserialize(buf+6);
@@ -92,6 +90,9 @@ void *event_thread(void *arg) {
     int rcnt = 0;
     int wcnt = 0;
     cout<<"event_thread"<<endl;
+
+    time_t last_keepalive = 0;    
+
     while(running) {
         //read
         check_connected(conn, config_.get_ls_ds_bind_ip().c_str(), config_.get_ls_ds_bind_port());
@@ -109,21 +110,37 @@ void *event_thread(void *arg) {
         if (rcnt == 0 && wcnt == 0) {
             usleep(300);
         }
+        time_t now = hl_timestamp();
+        if (now - last_keepalive > 10*1000*1000) {
+            last_keepalive = now;
+            cout<<"t:"<<(now-last_keepalive)<<endl;
+            //ka
+            send_keepalive();
+        }
     }
     destroy_conn(conn);
     return NULL;
 }
 
 void *proc_thread(void *arg) {
+    //log4cxx::LoggerPtr logger = log4cxx::Logger::getLogger("dataserver");
     if (arg == NULL) {
-        LOG4CXX_ERROR(logger_, "dataserver create proc_thread failed, arg is null");
+        //LOG4CXX_ERROR(logger_, "dataserver create proc_thread failed, arg is null");
         return NULL;
     }
     while(running) {
-        msg_t *msg = pop_proc_event(); 
-        if (msg != NULL && proc_cmd(msg, arg) == 0) {
-            push_send_event(msg);
+        //LOG4CXX_DEBUG(logger, "dataserver proc_thread while ... start");
+        msg_t *msg = try_pop_proc_event(); 
+        if (msg != NULL) {
+            if (proc_cmd(msg, arg) == 0) {
+                push_send_event(msg);
+            }
         }
+        else {
+            usleep(300);
+            sleep(1);
+        }
+        //LOG4CXX_DEBUG(logger, "dataserver proc_thread while ... ");
     }
     pthread_exit(NULL);
     return NULL;
@@ -220,7 +237,7 @@ int main(int argc, char **argv) {
     delete []dbm;
     
     LOG4CXX_INFO(logger_, "dataserver end");
-
+    
     return 0;
 }
 

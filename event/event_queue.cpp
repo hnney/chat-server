@@ -39,7 +39,7 @@ void push_proc_event(vector <msg_t*> &msgs) {
     pthread_mutex_unlock(&proc_mutex_);
 }
 msg_t *pop_proc_event() {
-    sem_wait(&sem);
+    //sem_wait(&sem);
     msg_t *msg = NULL;
     pthread_mutex_lock(&proc_mutex_);
     if (event_proc_.size() > 0) {
@@ -51,9 +51,12 @@ msg_t *pop_proc_event() {
 }
 
 msg_t *try_pop_proc_event() {
-    if (sem_trywait(&sem)) {
+    /*
+    fprintf(stderr, "try_pop_proc");
+    if (sem_trywait(&sem) < 0) {
         return NULL;
     }
+    */
     msg_t *msg = NULL;
     pthread_mutex_lock(&proc_mutex_);
     if (event_proc_.size() > 0) {

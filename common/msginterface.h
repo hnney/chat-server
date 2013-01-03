@@ -9,6 +9,8 @@ Value buildGroupsJson(vector <DBGroup> &dbgroups);
 Value buildTalksJson(vector <DBTalks> &dbtalks);
 void buildDBInterfaceJson(Value &json, DBInterface &dbinterface);
 
+int parse_dbinterface(Value &json, DBInterface &dbinterface);
+
 
 
 #endif //
