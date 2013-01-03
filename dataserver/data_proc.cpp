@@ -160,7 +160,17 @@ int proc_login_cmd (msg_t *msg, void *arg) {
 }
 
 int proc_exit_cmd(msg_t* msg, void *arg) {
-    return 0; 
+    if (arg == NULL || msg == NULL) return -1;
+    DBManager *dbm = (DBManager *)arg;
+    int ret = 1;
+    if (msg->user_id() > 0) {
+        dbm->setUserState(msg->user_id(), 0);
+        if (msg->state() == 2) { 
+            msg->set_state(3);
+            ret = 0;
+        }
+    } 
+    return ret; 
 }
 
 int proc_keepalive_cmd(msg_t *msg, void *arg) {

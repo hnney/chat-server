@@ -61,5 +61,10 @@ struct timeval *hl_ts2timeval(struct timeval *tv, long long timestamp);
 
 /** @} */
 
+//base64
+//use : in, inlen, out, outlen,  outlen>=inlen * 4 + 1
+void base64_encode(const char *in, const int in_len, char *out, int out_len);
+std::string base64_decode(std::string const& encoded_string);
+
 #endif //__UTILS_H__
 

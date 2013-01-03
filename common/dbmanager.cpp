@@ -190,9 +190,9 @@ int DBManager::getUser(const char *name, DBUser &dbu) {
         cout<<"rows:"<<result.num_rows()<<endl;
         if (result.num_rows() > 0 && result[0].size() >= 4) {
             dbu.user_id = atoi(result[0][0].c_str());
-            dbu.user_name = result[0][1].c_str();
-            dbu.user_pwd = result[0][2].c_str();
-            dbu.user_pwd_key = result[0][3].c_str();
+            dbu.user_name = string(result[0][1].c_str(), result[0][1].size());
+            dbu.user_pwd = string(result[0][2].c_str(), result[0][2].size());
+            dbu.user_pwd_key = string(result[0][3].c_str(), result[0][3].size());
             ret = 1;
         }
     }
@@ -211,16 +211,16 @@ int DBManager::getUserInfo(int user_id, DBUser &dbu) {
     if (getStoreData(sqlui, result)) {
         if (result.num_rows() > 0 && result[0].size() >= 11) {
             //dbu.user_id = atoi(result[0][0].c_str());
-            dbu.type = result[0][1].c_str();
-            dbu.truename = result[0][2].c_str();
-            dbu.sex = result[0][3].c_str();
-            dbu.height = result[0][4].c_str();
-            dbu.weight = result[0][5].c_str();
-            dbu.job = result[0][6].c_str(); 
-            dbu.place = result[0][7].c_str();
-            dbu.birthday = result[0][8].c_str();
-            dbu.headurl = result[0][9].c_str();
-            dbu.experience = result[0][10].c_str();
+            dbu.type = string(result[0][1].c_str(), result[0][1].size());
+            dbu.truename = string(result[0][2].c_str(), result[0][2].size());
+            dbu.sex = string(result[0][3].c_str(), result[0][3].size());
+            dbu.height = string(result[0][4].c_str(), result[0][4].size());
+            dbu.weight = string(result[0][5].c_str(), result[0][5].size());
+            dbu.job = string(result[0][6].c_str(), result[0][6].size()); 
+            dbu.place = string(result[0][7].c_str(), result[0][7].size());
+            dbu.birthday = string(result[0][8].c_str(), result[0][8].size());
+            dbu.headurl = string(result[0][9].c_str(), result[0][9].size());
+            dbu.experience = string(result[0][10].c_str(), result[0][10].size());
         }
         ret = 1;
     }
@@ -266,12 +266,33 @@ int DBManager::getFriends(int user_id, vector <DBFriend> &dbfriends) {
         for (size_t i = 0; i < res.num_rows(); i++) {
             if (res[i].size() >= 2) {
                 dbfriends[i].dbuser.user_id = atoi(res[i][0].c_str());
-                dbfriends[i].type = res[i][1].c_str();       
+                dbfriends[i].type = string(res[i][1].c_str(), res[i][1].size());       
             }
         }
         ret = 1;
     } 
     return ret;
+}
+
+int DBManager::addFriend(int user_id, int friend_id, string &type) {
+    char sql[128];
+    sprintf(sql, "insert into `user_friends`(`user_id`, `friend_id`) values('%d', '%d', '%s')", user_id, friend_id, type.c_str());
+    execSql(sql);
+    return 1;
+}
+
+int DBManager::modifyFriend(int user_id, int friend_id, string &newtype) {
+    char sql[256];
+    sprintf(sql, "update `user_friends` set `type`='%s' where `user_id`='%d' and `friend_id`='%d'", newtype.c_str(), user_id, friend_id);
+    execSql(sql);
+    return 1;
+}
+
+int DBManager::delFriend(int user_id, int friend_id) {
+    char sql[128];
+    sprintf(sql, "delete from `user_friends` where `user_id`='%d' and `friend_id`='%d'", user_id, friend_id);
+    execSql(sql);
+    return 1;
 }
 
 int DBManager::getGroupInfo(int group_id, DBGroup &dbgroup) {
@@ -281,9 +302,9 @@ int DBManager::getGroupInfo(int group_id, DBGroup &dbgroup) {
     StoreQueryResult res;
     if (getStoreData(sqlgi, res)) {
         if (res.num_rows() > 0 && res[0].size() >= 3) {
-            dbgroup.name = res[0][0].c_str();
-            dbgroup.notice = res[0][1].c_str();
-            dbgroup.headurl = res[0][2].c_str();
+            dbgroup.name = string(res[0][0].c_str(), res[0][0].size());
+            dbgroup.notice = string(res[0][1].c_str(), res[0][1].size());
+            dbgroup.headurl = string(res[0][2].c_str(), res[0][2].size());
         }    
         ret = 1;
     }

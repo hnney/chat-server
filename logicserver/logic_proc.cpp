@@ -76,6 +76,7 @@ void clean_user(user_t* user) {
 
 void send_user_exit(user_t* user) {
     msg_t msg;
+    msg.set_user_id(user->id);
     msg.set_cmd(CMD_EXIT);
     msg.set_uid(user->uid);
     msg.set_state(4);
@@ -176,7 +177,7 @@ int proc_exit_cmd(msg_t* msg, conn_t* conn) {
         msg->set_state(2);
         send_to_dbserver(msg);
      
-        conn->invalid_time = hl_timestamp() + 5*1000*1000;
+        conn->invalid_time = hl_timestamp() + CONN_INVALID_TIME;
     }
     else if (msg->state() == 3) {
         map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
