@@ -22,6 +22,7 @@ public:
     bool connectMysql(Connection &conn);
     bool connectMysql();
     void closeMysql();
+    bool checkConnection();
    
     int execSql(const char *sql);
     int getStoreData(const char *sql, StoreQueryResult &result);

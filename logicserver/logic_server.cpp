@@ -158,7 +158,7 @@ static int net_handle(int fd, int op) {
             conn->invalid_time = 0;
             conn_timeout.sort();
         }
-        LOG4CXX_DEBUG(logger_, "logicserver recv:"<<rl<<" write:"<<wl);
+        LOG4CXX_DEBUG(logger_, "logicserver recv:"<<rl<<" write:"<<wl<<" fd:"<<fd<<" op:"<<op);
     }
     return 0;
 }

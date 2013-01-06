@@ -112,8 +112,8 @@ void *event_thread(void *arg) {
         }
         time_t now = hl_timestamp();
         if (now - last_keepalive > 10*1000*1000) {
-            last_keepalive = now;
             cout<<"t:"<<(now-last_keepalive)<<endl;
+            last_keepalive = now;
             //ka
             send_keepalive();
         }

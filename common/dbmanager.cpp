@@ -125,8 +125,20 @@ bool DBManager::connectMysql(Connection &conn) {
     }
 }
 
+bool DBManager::checkConnection() {
+    if (conn_.ping() == false) {
+        closeMysql();
+        return connectMysql();
+    }
+    return true;
+}
+
 int DBManager::execSql(const char *sql) {
     try {
+        if (!checkConnection()) {
+            cerr<<"connect mysql faield"<<endl;
+            return 0;
+        }
         Query query = conn_.query();
         query<<sql;
         query.execute();
@@ -143,6 +155,10 @@ int DBManager::execSql(const char *sql) {
 int DBManager::getStoreData(const char *sql, StoreQueryResult &result) {
     int ret = 0;
     try {
+        if (!checkConnection()) {
+            cerr<<"connect mysql faield"<<endl;
+            return 0;
+        }
         Query query = conn_.query();
         query<<sql;
         result = query.store();
@@ -351,7 +367,7 @@ int DBManager::getUserGroups(int user_id, vector <DBGroup> &groups) {
 
 int DBManager::getTalkInfo(int talk_id, DBTalks &dbtalks) {
     char sqlti[256];
-    sprintf(sqlti, "select `name`,`notice`,`headurl` from `user_talks_info` where `talk_id`='%d'", talk_id);
+    sprintf(sqlti, "select `name`,`notice`,`headurl` from `user_talks_info` where `talks_id`='%d'", talk_id);
     int ret = 0;
     StoreQueryResult res;
     if (getStoreData(sqlti, res)) {
@@ -370,7 +386,7 @@ int DBManager::getTalkInfo(int talk_id, DBTalks &dbtalks) {
 
 int DBManager::getTalkMembers(int talk_id, DBTalks &dbtalks) {
     char sqltm[256];
-    sprintf(sqltm, "select `user_id` from `user_talks_members` where `talk_id`='%d'", talk_id);
+    sprintf(sqltm, "select `user_id` from `user_talks_members` where `talks_id`='%d'", talk_id);
     int ret = 0;
     StoreQueryResult res;
     if (getStoreData(sqltm, res)) {
