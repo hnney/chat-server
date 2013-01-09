@@ -27,8 +27,10 @@ public:
     int execSql(const char *sql);
     int getStoreData(const char *sql, StoreQueryResult &result);
     int getStoreData(const char *sql, UseQueryResult &result);
+    int getStoreData(string &sql, StoreQueryResult &result);
 
-    int getUser(const char *name, DBUser &dbu);
+    //int getUser(const char *name, DBUser &dbu);
+    int getUser(const string &name, DBUser &dbu);
     int getUserInfo(int user_id, DBUser &dbu);
     int getUserState(int user_id, DBUser &dbu) ;
     int setUserState(int user_id, int state);

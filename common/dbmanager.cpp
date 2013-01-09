@@ -114,6 +114,7 @@ bool DBManager::connectMysql(Connection &conn) {
         return true;
     }
     conn.set_option(new MultiStatementsOption(CLIENT_MULTI_STATEMENTS));
+    conn.set_option(new SetCharsetNameOption("utf8"));
     if (conn.connect(database_.c_str(), host_.c_str(), user_.c_str(), pwd_.c_str(), port_)){
         Query q = conn.query("set names utf8");
         q.execute();
@@ -159,8 +160,41 @@ int DBManager::getStoreData(const char *sql, StoreQueryResult &result) {
             cerr<<"connect mysql faield"<<endl;
             return 0;
         }
-        Query query = conn_.query();
-        query<<sql;
+        Query query = conn_.query(sql);
+        //query.parse();
+        result = query.store();
+        if (result) {
+            ret = 1;
+        }
+        StoreQueryResult res;
+        for (int i = 1; query.more_results(); ++i) {
+            res = query.store_next();
+        }
+    }
+    catch (const mysqlpp::BadQuery& er) {
+        cerr<<"getstore failed:["<<sql<<"], err:"<<er.what()<<endl;
+    }
+    catch (const mysqlpp::BadConversion& er) {
+        cerr<<"getstare failed:["<<sql<<"], err:"<<er.what()<<endl;
+    }
+    catch (const mysqlpp::Exception& er) {
+         cerr<<"getstare failed:["<<sql<<"], err:"<<er.what()<<endl;
+    }
+    catch(...) {
+        cerr<<"getStareData faield, sql:"<<sql<<endl;
+    }
+    return ret;
+}
+
+int DBManager::getStoreData(string &sql, StoreQueryResult &result) {
+    int ret = 0;
+    try {
+        if (!checkConnection()) {
+            cerr<<"connect mysql faield"<<endl;
+            return 0;
+        }
+        Query query = conn_.query(sql);
+        //query.parse();
         result = query.store();
         if (result) {
             ret = 1;
@@ -197,9 +231,10 @@ int DBManager::getStoreData(const char *sql, UseQueryResult &result) {
     return ret;
 }
 
-int DBManager::getUser(const char *name, DBUser &dbu) {
-    char sql[128];
-    sprintf(sql, "call user_login('%s')", name);
+int DBManager::getUser(const string &name, DBUser &dbu) {
+    //char sql[128];
+    //sprintf(sql, "call user_login('%s')", name);
+    string sql = "call user_login('" + name + "')";
     StoreQueryResult result;
     int ret = 0;
     if (getStoreData(sql, result)) {
@@ -329,7 +364,7 @@ int DBManager::getGroupInfo(int group_id, DBGroup &dbgroup) {
 
 int DBManager::getGroupMembers(int group_id, DBGroup &dbgroup) {
     char sqlgm[256]; 
-    sprintf(sqlgm, "select `user_id` from `user_group_members` where `group_id`='%d'", group_id);
+    sprintf(sqlgm, "select `user_id`,`type` from `user_group_members` where `group_id`='%d'", group_id);
     int ret = 0;
     StoreQueryResult res;
     if (getStoreData(sqlgm, res)) {
@@ -337,8 +372,9 @@ int DBManager::getGroupMembers(int group_id, DBGroup &dbgroup) {
             dbgroup.members.resize(res.num_rows());
         }
         for (size_t i = 0; i < res.num_rows(); i++) {
-            if (res[i].size() >= 1) {
+            if (res[i].size() >= 2) {
                 dbgroup.members[i].user_id = atoi(res[i][0].c_str());
+                dbgroup.members[i].subtype = atoi(res[i][1].c_str());
             }
         }
         ret = 1;
@@ -423,9 +459,10 @@ int DBManager::getUserTalks(int user_id, vector <DBTalks> &talks) {
 }
 
 #ifdef TEST_
+//dbname user pwd uid,uid_pwd
 int main(int argc, char **argv) {
     DBManager dbm;
-    string p = string(argv[5]) + "!@";
+    string p = string(argv[3]) + "!@";
     dbm.init("localhost", 3306, argv[1], argv[2], p.c_str());
     if (!dbm.connectMysql()) {
         cout<<"connect failed"<<endl;
@@ -433,10 +470,10 @@ int main(int argc, char **argv) {
     }
     DBUser dbu;
     int ret = 0;
-    if (dbm.getUser(argv[3], dbu)) {
+    if (dbm.getUser(argv[4], dbu)) {
         cout<<dbu.user_id<<" "<<dbu.user_name<<" "<<dbu.user_pwd<<" "<<dbu.user_pwd_key;
         cout<<endl;
-        string pwdstr = argv[4] + dbu.user_pwd_key;
+        string pwdstr = argv[5] + dbu.user_pwd_key;
         string pwdkey = md5(pwdstr);
         if (pwdkey == dbu.user_pwd) {
             cout<<"login success"<<endl;

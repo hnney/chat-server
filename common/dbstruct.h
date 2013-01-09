@@ -13,6 +13,7 @@ public:
         user_id = 0;
         state = 0;
         invited = 0;
+        subtype = 0;
     }
     int user_id;
     string user_name;
@@ -29,6 +30,8 @@ public:
     string birthday;
     string headurl;
     string experience;
+
+    int subtype; //当是群成员是，属于什么类型成员, 0:普通成员，1：普通管理员，2：创建者
 
     int state;
     int invited;

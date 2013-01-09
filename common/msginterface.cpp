@@ -15,6 +15,8 @@ void buildDBUserJson(Value &json, DBUser &dbuser) {
     json["headurl"] = dbuser.headurl; 
     json["selfdescription"] = "null";
     json["invited"] = dbuser.invited;
+    
+    json["membertype"] = dbuser.subtype;
 }
 
 Value buildFriendsJson(vector <DBFriend> &dbfriends) {
@@ -33,7 +35,7 @@ Value buildGroupsJson(vector <DBGroup> &dbgroups) {
     Value groups(arrayValue);
     for (size_t i = 0; i < dbgroups.size(); i++) {
         Value json(objectValue);
-        json["name"] = dbgroups[i].name;
+        json["uid"] = dbgroups[i].name;
         json["notice"] = dbgroups[i].notice;
         json["headurl"] = dbgroups[i].headurl;
         json["id"] = dbgroups[i].group_id;
