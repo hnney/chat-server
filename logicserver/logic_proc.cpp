@@ -25,8 +25,8 @@ static LogicCmd logic_cmd[] = {
     {CMD_MODIFY_GROUP_INFO, NULL}, //10
     {CMD_MODIFY_FRIEND, NULL}, //11
     {CMD_GETALL_USERS, NULL}, //12
-    {CMD_FIND_USER, NULL}, //13
-    {CMD_ADD_FRIEND, NULL}, //14
+    {CMD_FIND_USER, proc_find_info}, //13
+    {CMD_ADD_FRIEND, proc_add_friend}, //14
     {CMD_DEL_FRIEND, NULL}, //15
     {CMD_KA, proc_keepalive_cmd}, //16
 };
@@ -231,6 +231,112 @@ int proc_text_cmd(msg_t *msg, conn_t *conn) {
     return 0;
 }
 
+int proc_find_info(msg_t *msg, conn_t *conn) {
+    int ret = 0;
+    if (msg->state() == 1) {
+        user_t *user = (user_t *)conn->data.ptr;
+        if (user == NULL || user->state != STATE_LOGINED) {
+            return -1;
+        }
+        msg->set_state(2);
+        send_to_dbserver(msg);         
+    }
+    else if (msg->state() == 3) {
+        user_t *tuser = NULL;
+        map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
+        if (uiter != idu_map.end()) {
+            tuser = uiter->second;
+        } 
+        if (tuser != NULL && tuser->conn) {
+            send_to_client(msg, tuser->conn);
+        }
+        else {
+             ret = -1;
+            //TODO
+        }
+    }
+    return ret;
+}
+
+int proc_add_friend(msg_t *msg, conn_t *conn) {
+    int ret = 0;
+    //type: 0 发送, 1:验证
+    if (msg->state() == 1) {
+        if (msg->uid() == msg->tuid()) {
+            return -1;
+        }
+        user_t *user = (user_t *)conn->data.ptr;
+        if (user == NULL || user->state != STATE_LOGINED) {
+            return -1;
+        }
+        
+        if (msg->type() == 0) {
+            user_t *tuser = NULL;
+            map <string, user_t *>::iterator uiter = idu_map.find(msg->tuid());
+            if (uiter != idu_map.end()) {
+                tuser = uiter->second;
+            }
+            if (tuser != NULL) {
+                if (find(user->friend_ids.begin(), user->friend_ids.end(), tuser->id) != user->friend_ids.end()) {
+                    return -1;
+                }
+                if (tuser->conn) {
+                    send_to_client(msg, tuser->conn);
+                }
+                else {
+                    msg->set_state(4);
+                    send_to_dbserver(msg);
+                }
+            }
+            else {
+                //record to db //liuyan
+                msg->set_state(4);
+                send_to_dbserver(msg);
+            }
+        }
+        else if (msg->type() == 1) {
+            user_t *user = NULL;
+            map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
+            if (uiter != idu_map.end()) {
+                user = uiter->second;
+            }
+            if (msg->succ() == 0) {
+                //record to db
+                msg->set_state(2);
+                send_to_dbserver(msg);
+            }
+            else if (user != NULL && user->conn) {
+                send_to_client(msg, user->conn);
+            }
+            else {
+                //log
+            }
+        }
+        else {
+            ret = -1;
+        }
+    }
+    else if (msg->state() == 3) {
+        user_t *user = NULL;
+        user_t *tuser = NULL;
+        map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
+        if (uiter != idu_map.end()) {
+             user = uiter->second;
+        } 
+        uiter = idu_map.find(msg->tuid());
+        if (uiter != idu_map.end()) {
+             tuser = uiter->second;
+        }
+        if (user != NULL && tuser != NULL && msg->succ() == 0) {
+            user->friend_ids.push_back(tuser->id);
+            tuser->friend_ids.push_back(user->id);  
+            if (user->conn) {
+                send_to_client(msg, user->conn);
+            }
+        }
+    }
+    return ret;
+}
 
 // 
 

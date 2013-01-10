@@ -15,12 +15,11 @@ typedef struct _logicCmd {
 }LogicCmd;
 
 int proc_cmd(msg_t *msg, void *arg);
-
 int proc_login_cmd(msg_t *msg, void *arg);
-
 int proc_exit_cmd(msg_t *msg, void *arg);
-
 int proc_keepalive_cmd(msg_t *msg, void *arg); 
+int proc_find_info(msg_t *msg, void *arg);
+int proc_add_friend(msg_t *msg, void *arg);
 
 void clean_conn(conn_t *conn);
 void send_keepalive();

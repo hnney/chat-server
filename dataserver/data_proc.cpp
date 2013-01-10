@@ -7,6 +7,7 @@
 #include "../json/json_util.h"
 #include "../common/msginterface.h"
 #include "../common/def.h"
+#include <assert.h>
 
 extern AppConfig config_;
 extern log4cxx::LoggerPtr logger_;
@@ -24,8 +25,8 @@ static LogicCmd logic_cmd[] = {
     {CMD_MODIFY_GROUP_INFO, NULL},
     {CMD_MODIFY_FRIEND, NULL},
     {CMD_GETALL_USERS, NULL},
-    {CMD_FIND_USER, NULL},
-    {CMD_ADD_FRIEND, NULL},
+    {CMD_FIND_USER, proc_find_info},
+    {CMD_ADD_FRIEND, proc_add_friend},
     {CMD_DEL_FRIEND, NULL},
     {CMD_KA, proc_keepalive_cmd},
 };
@@ -177,5 +178,56 @@ int proc_keepalive_cmd(msg_t *msg, void *arg) {
     return 0;
 }
 
+int proc_find_info(msg_t *msg, void *arg) {
+    assert(msg != NULL && arg != NULL);
+    DBManager *dbm = (DBManager *)arg;
+    if (msg->state() == 2) {
+        int succ = 0;
+        DBUser dbuser;
+        if (!dbm->getUser(msg->tuid().c_str(), dbuser)) {
+            succ = 1;
+        }
+        else {
+            if (!dbm->getUserState(dbuser.user_id, dbuser) || !dbm->getUserInfo(dbuser.user_id, dbuser)) {
+                succ = 1;
+            }
+        }
+        if (succ == 0) {
+            Value json(objectValue);
+            buildDBUserJson(json, dbuser);
+            string msgstr = getJsonStr(json);
+            msg->set_msg(msgstr);
+        }
+        msg->set_state(3);
+        msg->set_succ(succ);
+        return 0;
+    }
+    return 1;
+}
+
+int proc_add_friend(msg_t *msg, void *arg) {
+    assert(msg != NULL && arg != NULL);
+    DBManager *dbm = (DBManager *)arg;
+    int ret = 1;
+    if (msg->state() == 2) {
+        //record
+        DBUser dbuser;
+        DBUser dbfriend; 
+        string friendtype = "online";
+        if (dbm->getUser(msg->uid(), dbuser) && dbm->getUser(msg->tuid(), dbfriend)) {
+            dbm->addFriend(dbuser.user_id, dbfriend.user_id, friendtype);
+            dbm->addFriend(dbfriend.user_id, dbuser.user_id, friendtype);
+            msg->set_succ(0); 
+        }
+        else {
+            msg->set_succ(2);
+        }
+        ret = 0;
+    }
+    else if (msg->state() == 4) {
+        //add record to db
+    }
+    return ret;
+}
 
 

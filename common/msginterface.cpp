@@ -15,6 +15,7 @@ void buildDBUserJson(Value &json, DBUser &dbuser) {
     json["headurl"] = dbuser.headurl; 
     json["selfdescription"] = "null";
     json["invited"] = dbuser.invited;
+    json["state"] = dbuser.state;
     
     json["membertype"] = dbuser.subtype;
 }
