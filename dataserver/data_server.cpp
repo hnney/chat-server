@@ -47,11 +47,12 @@ int read_event(conn_t *conn) {
         read_data(conn, buf, ulen+6);
         buf[ulen+6-1] = '\0';
 
-        LOG4CXX_DEBUG(logger_, "ulen:"<<ulen<<" buf:["<<buf<<"]");
+        //LOG4CXX_DEBUG(logger_, "ulen:"<<ulen<<" buf:["<<buf<<"]");
 
         msg_t *msg = new msg_t();
         msg->unserialize(buf+6);
         msg_event.push_back(msg);
+        LOG4CXX_DEBUG(logger_, "cmd:"<<msg->cmd()<<" uid:"<<msg->uid()<<" tuid:"<<msg->tuid()<<" state:"<<msg->state());
 
         if (buf != sbuf) {
             free(buf);
@@ -69,6 +70,7 @@ int send_event(conn_t *conn) {
     int cnt = 0;
     msg_t *msg = pop_send_event();
     while (msg != NULL) {        
+        cout<<"send event, cmd:"<<msg->cmd()<<endl;
         if (send_to_client(msg, conn) < 0) {
             push_send_event(msg); 
             break;
@@ -89,7 +91,7 @@ void *event_thread(void *arg) {
 
     int rcnt = 0;
     int wcnt = 0;
-    cout<<"event_thread"<<endl;
+    //cout<<"event_thread"<<endl;
 
     time_t last_keepalive = 0;    
 
@@ -111,8 +113,8 @@ void *event_thread(void *arg) {
             usleep(300);
         }
         time_t now = hl_timestamp();
-        if (now - last_keepalive > 10*1000*1000) {
-            cout<<"t:"<<(now-last_keepalive)<<endl;
+        if (now - last_keepalive > 100*1000*1000) {
+            //cout<<"t:"<<(now-last_keepalive)<<endl;
             last_keepalive = now;
             //ka
             send_keepalive();
@@ -133,12 +135,16 @@ void *proc_thread(void *arg) {
         msg_t *msg = try_pop_proc_event(); 
         if (msg != NULL) {
             if (proc_cmd(msg, arg) == 0) {
+                cout<<"push_event, cmd:"<<msg->cmd()<<endl;
                 push_send_event(msg);
+            }
+            else {
+                cout<<"proc_event, cmd:"<<msg->cmd()<<" failed"<<endl;
             }
         }
         else {
+            //TODO wait modify
             usleep(300);
-            sleep(1);
         }
         //LOG4CXX_DEBUG(logger, "dataserver proc_thread while ... ");
     }
@@ -147,7 +153,7 @@ void *proc_thread(void *arg) {
 }
 
 static void sig_handler(const int sig) {
-    cout<<"SIGINT handled. \n";
+    //cout<<"SIGINT handled. \n";
     running = false;
     exit(0);
 }

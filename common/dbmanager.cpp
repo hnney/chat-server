@@ -251,16 +251,21 @@ int DBManager::getUser(const string &name, DBUser &dbu) {
 }
 
 int DBManager::getUserInfo(int user_id, DBUser &dbu) {
-    char sqlui[256];
-    sprintf(sqlui, "select `user_id`,`user_type`,`user_truename`,`user_sex`,"
-                   "`user_height`,`user_weight`,`user_job`,`user_national`,"
-                   "`user_birthday`,`user_pic`,`user_experience` from user_info "
-                   " where `user_id`='%d'", user_id); 
+    char sqlui[512];
+    sprintf(sqlui, "select u.`user_id`,user_info.`user_type`,user_info.`user_truename`,user_info.`user_sex`,"
+                   "user_info.`user_height`,user_info.`user_weight`,user_info.`user_job`,user_info.`user_national`,"
+                   "user_info.`user_birthday`,user_info.`user_pic`,user_info.`user_experience`,u.user_name from are_sys_user "
+                   "u left join user_info on u.user_id=user_info.user_id "
+                   " where u.`user_id`='%d'", user_id);
+    //sprintf(sqlui, "select `user_id`,`user_type`,`user_truename`,`user_sex`,"
+     //              "`user_height`,`user_weight`,`user_job`,`user_national`,"
+      //             "`user_birthday`,`user_pic`,`user_experience` from user_info "
+       //            " where `user_id`='%d'", user_id); 
     //sprintf(sqlui, "select * from `user_info` where `user_id`='%d'", user_id);
     int ret = 0;
     StoreQueryResult result;
     if (getStoreData(sqlui, result)) {
-        if (result.num_rows() > 0 && result[0].size() >= 11) {
+        if (result.num_rows() > 0 && result[0].size() >= 12) {
             //dbu.user_id = atoi(result[0][0].c_str());
             dbu.type = string(result[0][1].c_str(), result[0][1].size());
             dbu.truename = string(result[0][2].c_str(), result[0][2].size());
@@ -272,6 +277,7 @@ int DBManager::getUserInfo(int user_id, DBUser &dbu) {
             dbu.birthday = string(result[0][8].c_str(), result[0][8].size());
             dbu.headurl = string(result[0][9].c_str(), result[0][9].size());
             dbu.experience = string(result[0][10].c_str(), result[0][10].size());
+            dbu.user_name = string(result[0][11].c_str(), result[0][11].size());
         }
         ret = 1;
     }

@@ -114,7 +114,7 @@ int event_dispatch (event_t *handle, int timeout) {
                 }
             }
             handle->callback (events[i].data.fd, op);
-            cerr<<"fd:"<<events[i].data.fd<<" event:"<<((op&EV_WRITE)?"write,":"")<<((op&EV_READ)?"read":"")<<endl;;
+            //cerr<<"fd:"<<events[i].data.fd<<" event:"<<((op&EV_WRITE)?"write,":"")<<((op&EV_READ)?"read":"")<<endl;;
         }
     //}
     return 0;

@@ -12,20 +12,20 @@
 extern AppConfig config_;
 extern log4cxx::LoggerPtr logger_;
 static LogicCmd logic_cmd[] = {
-    {CMD_RESERVE, NULL},
-    {CMD_LOGIN, proc_login_cmd},
-    {CMD_GET_FRIEND, NULL},
-    {CMD_GET_GROUPINFO, NULL},
-    {CMD_EXIT, proc_exit_cmd},
-    {CMD_TEXT, NULL},
-    {CMD_TRANS_FILE, NULL},
-    {CMD_SHARE_FILE, NULL},
-    {CMD_TRANS_VIDEO, NULL},
-    {CMD_MODIFY_INFO, NULL},
-    {CMD_MODIFY_GROUP_INFO, NULL},
-    {CMD_MODIFY_FRIEND, NULL},
-    {CMD_GETALL_USERS, NULL},
-    {CMD_FIND_USER, proc_find_info},
+    {CMD_RESERVE, NULL}, //0
+    {CMD_LOGIN, proc_login_cmd}, //1
+    {CMD_GET_FRIEND, NULL}, //2
+    {CMD_GET_GROUPINFO, NULL}, //3
+    {CMD_EXIT, proc_exit_cmd}, //4
+    {CMD_TEXT, NULL}, //5
+    {CMD_TRANS_FILE, NULL}, //6
+    {CMD_SHARE_FILE, NULL}, //7
+    {CMD_TRANS_VIDEO, NULL}, //8
+    {CMD_MODIFY_INFO, NULL}, //9
+    {CMD_MODIFY_GROUP_INFO, NULL}, //10
+    {CMD_MODIFY_FRIEND, NULL}, //11
+    {CMD_GETALL_USERS, NULL}, //12
+    {CMD_FIND_USER, proc_find_info}, //13
     {CMD_ADD_FRIEND, proc_add_friend},
     {CMD_DEL_FRIEND, NULL},
     {CMD_KA, proc_keepalive_cmd},
@@ -91,7 +91,7 @@ int proc_login_cmd (msg_t *msg, void *arg) {
                     //log
                 }
                 //friend info
-                if (!dbm->getUserState(dbinterface.dbfriends[i].dbuser.user_id, dbinterface.dbfriends[i].dbuser)) {
+                if (!dbm->getUserInfo(dbinterface.dbfriends[i].dbuser.user_id, dbinterface.dbfriends[i].dbuser)) {
                     //log
                 }
             }
@@ -113,10 +113,10 @@ int proc_login_cmd (msg_t *msg, void *arg) {
                 //member info
                 for (size_t j = 0; j < dbinterface.dbgroups[i].members.size(); j++) {
                     //state
-                    if (!dbm->getUserState(dbinterface.dbgroups[i].members[i].user_id, dbinterface.dbgroups[i].members[i])) {
+                    if (!dbm->getUserState(dbinterface.dbgroups[i].members[j].user_id, dbinterface.dbgroups[i].members[j])) {
                     }
                     //info
-                    if (!dbm->getUserInfo(dbinterface.dbgroups[i].members[i].user_id, dbinterface.dbgroups[i].members[i])) {
+                    if (!dbm->getUserInfo(dbinterface.dbgroups[i].members[j].user_id, dbinterface.dbgroups[i].members[j])) {
                     }
                 }
             }
@@ -139,10 +139,10 @@ int proc_login_cmd (msg_t *msg, void *arg) {
                 //member info
                 for (size_t j = 0; j < dbinterface.dbtalks[i].members.size(); j++) {
                     //state
-                    if (!dbm->getUserState(dbinterface.dbtalks[i].members[i].user_id, dbinterface.dbtalks[i].members[i])) {
+                    if (!dbm->getUserState(dbinterface.dbtalks[i].members[j].user_id, dbinterface.dbtalks[i].members[j])) {
                     }
                     //info
-                    if (!dbm->getUserInfo(dbinterface.dbtalks[i].members[i].user_id, dbinterface.dbtalks[i].members[i])) {
+                    if (!dbm->getUserInfo(dbinterface.dbtalks[i].members[j].user_id, dbinterface.dbtalks[i].members[j])) {
                     }
                 }
             }
@@ -182,25 +182,33 @@ int proc_find_info(msg_t *msg, void *arg) {
     assert(msg != NULL && arg != NULL);
     DBManager *dbm = (DBManager *)arg;
     if (msg->state() == 2) {
-        int succ = 0;
-        DBUser dbuser;
-        if (!dbm->getUser(msg->tuid().c_str(), dbuser)) {
-            succ = 1;
-        }
-        else {
-            if (!dbm->getUserState(dbuser.user_id, dbuser) || !dbm->getUserInfo(dbuser.user_id, dbuser)) {
+        if (msg->type() == 0) {
+            int succ = 0;
+            DBUser dbuser;
+            if (!dbm->getUser(msg->tuid().c_str(), dbuser)) {
                 succ = 1;
             }
+            else {
+                if (!dbm->getUserState(dbuser.user_id, dbuser) || !dbm->getUserInfo(dbuser.user_id, dbuser)) {
+                    succ = 1;
+                }
+            }
+            if (succ == 0) {
+                Value json(objectValue);
+                buildDBUserJson(json, dbuser);
+                Value friendjson(objectValue);
+                friendjson["friend"] = json;
+                string msgstr = getJsonStr(friendjson);
+                msg->set_msg(msgstr);
+                cout<<"find:"<<msgstr<<endl;
+            }
+            msg->set_state(3);
+            msg->set_succ(succ);
+            return 0;
         }
-        if (succ == 0) {
-            Value json(objectValue);
-            buildDBUserJson(json, dbuser);
-            string msgstr = getJsonStr(json);
-            msg->set_msg(msgstr);
+        else if (msg->type() == 1) {
+            //group
         }
-        msg->set_state(3);
-        msg->set_succ(succ);
-        return 0;
     }
     return 1;
 }
