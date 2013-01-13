@@ -216,8 +216,10 @@ int proc_keepalive_cmd(msg_t *msg, conn_t *conn) {
 }
 
 int proc_text_cmd(msg_t *msg, conn_t *conn) {
+    LOG4CXX_DEBUG(logger_, "send text, uid:"<<msg->uid()<<" tuid:"<<msg->tuid());
     user_t *user = (user_t *)conn->data.ptr;
     if (user == NULL || user->state != STATE_LOGINED) {
+        LOG4CXX_DEBUG(logger_, "text, user not logined, uid:"<<msg->uid());
         return -1;
     }
     user_t *tuser = NULL;
@@ -228,6 +230,7 @@ int proc_text_cmd(msg_t *msg, conn_t *conn) {
     if (tuser == NULL || tuser->state != STATE_LOGINED) {
         //TODO
         //msg message
+        LOG4CXX_DEBUG(logger_, "text, uid:"<<msg->uid()<<" tuid:"<<msg->tuid());
     }
     else {
         send_to_client(msg, tuser->conn);
@@ -267,6 +270,7 @@ int proc_find_info(msg_t *msg, conn_t *conn) {
 int proc_add_friend(msg_t *msg, conn_t *conn) {
     int ret = 0;
     //type: 0 发送, 1:验证
+    LOG4CXX_DEBUG(logger_, "add friend, uid:"<<msg->uid()<<" tuid:"<<msg->tuid()<<" state:"<<msg->state()<<" succ:"<<msg->succ());
     if (msg->state() == 1) {
         if (msg->uid() == msg->tuid()) {
             LOG4CXX_DEBUG(logger_, "user can not add self, uid:"<<msg->uid());
@@ -305,10 +309,10 @@ int proc_add_friend(msg_t *msg, conn_t *conn) {
             }
         }
         else if (msg->type() == 1) {
-            user_t *user = NULL;
-            map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
+            user_t *tuser = NULL;
+            map <string, user_t *>::iterator uiter = idu_map.find(msg->tuid());
             if (uiter != idu_map.end()) {
-                user = uiter->second;
+                tuser = uiter->second;
             }
             if (msg->succ() == 0) {
                 //record to db
@@ -316,8 +320,8 @@ int proc_add_friend(msg_t *msg, conn_t *conn) {
                 msg->set_state(2);
                 send_to_dbserver(msg);
             }
-            else if (user != NULL && user->conn) {
-                send_to_client(msg, user->conn);
+            else if (user != NULL && tuser->conn) {
+                send_to_client(msg, tuser->conn);
             }
             else {
                 //log
@@ -341,8 +345,8 @@ int proc_add_friend(msg_t *msg, conn_t *conn) {
         if (user != NULL && tuser != NULL && msg->succ() == 0) {
             user->friend_ids.push_back(tuser->id);
             tuser->friend_ids.push_back(user->id);  
-            if (user->conn) {
-                send_to_client(msg, user->conn);
+            if (tuser->conn) {
+                send_to_client(msg, tuser->conn);
             }
         }
     }

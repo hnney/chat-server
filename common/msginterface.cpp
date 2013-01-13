@@ -13,7 +13,7 @@ void buildDBUserJson(Value &json, DBUser &dbuser) {
     json["job"] = dbuser.job;
     json["experience"] = dbuser.experience;
     json["headurl"] = dbuser.headurl; 
-    json["selfdescription"] = "null";
+    json["selfdescription"] = dbuser.user_desc;
     json["invited"] = dbuser.invited;
     json["state"] = dbuser.state;
     
@@ -56,7 +56,7 @@ Value buildTalksJson(vector <DBTalks> &dbtalks) {
     Value talks(arrayValue);
     for (size_t i = 0; i < dbtalks.size(); i++) {
         Value json(objectValue);
-        json["name"] = dbtalks[i].name;
+        json["uid"] = dbtalks[i].name;
         json["notice"] = dbtalks[i].notice;
         json["headurl"] = dbtalks[i].headurl;
         json["id"] = dbtalks[i].talk_id;

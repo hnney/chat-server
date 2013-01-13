@@ -26,8 +26,8 @@ static LogicCmd logic_cmd[] = {
     {CMD_MODIFY_FRIEND, NULL}, //11
     {CMD_GETALL_USERS, NULL}, //12
     {CMD_FIND_USER, proc_find_info}, //13
-    {CMD_ADD_FRIEND, proc_add_friend},
-    {CMD_DEL_FRIEND, NULL},
+    {CMD_ADD_FRIEND, proc_add_friend}, //14
+    {CMD_DEL_FRIEND, NULL}, //15
     {CMD_KA, proc_keepalive_cmd},
 };
 
@@ -182,7 +182,7 @@ int proc_find_info(msg_t *msg, void *arg) {
     assert(msg != NULL && arg != NULL);
     DBManager *dbm = (DBManager *)arg;
     if (msg->state() == 2) {
-        if (msg->type() == 0) {
+        if (msg->type() == 1) {
             int succ = 0;
             DBUser dbuser;
             if (!dbm->getUser(msg->tuid().c_str(), dbuser)) {
@@ -206,7 +206,7 @@ int proc_find_info(msg_t *msg, void *arg) {
             msg->set_succ(succ);
             return 0;
         }
-        else if (msg->type() == 1) {
+        else if (msg->type() == 2) {
             //group
         }
     }
@@ -230,10 +230,12 @@ int proc_add_friend(msg_t *msg, void *arg) {
         else {
             msg->set_succ(2);
         }
+        msg->set_state(3);
         ret = 0;
     }
     else if (msg->state() == 4) {
         //add record to db
+        ret = 0;
     }
     return ret;
 }

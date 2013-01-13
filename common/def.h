@@ -2,7 +2,8 @@
 #define __DEF_H__
 
 
-#define CONN_INVALID_TIME 300*1000*1000;
+#define CONN_INVALID_TIME 2000*1000*1000;
+//#define CONN_INVALID_TIME 60*1000*1000;
 
 enum CMD_ {
     CMD_RESERVE = 0,

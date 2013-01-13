@@ -30,6 +30,7 @@ public:
     string birthday;
     string headurl;
     string experience;
+    string user_desc;
 
     int subtype; //当是群成员是，属于什么类型成员, 0:普通成员，1：普通管理员，2：创建者
 
