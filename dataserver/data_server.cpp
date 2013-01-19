@@ -73,6 +73,7 @@ int send_event(conn_t *conn) {
         cout<<"send event, cmd:"<<msg->cmd()<<endl;
         if (send_to_client(msg, conn) < 0) {
             push_send_event(msg); 
+            delete msg;
             break;
         }
         delete msg;

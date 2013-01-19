@@ -180,11 +180,11 @@ static void *thread_main(void *arg) {
 
             //TODO
             LOG4CXX_DEBUG(logger_, "conn is invalid, fd:"<<conn->fd<<" now:"<<now<<" invalid_t:"<<conn->invalid_time);
-            if (conn->data.ptr != NULL) {
-                user_t *user = (user_t *)conn->data.ptr;
+            if (conn->ptr != NULL) {
+                user_t *user = (user_t *)conn->ptr;
                 send_user_exit(user);
-                clean_user(user);
                 LOG4CXX_DEBUG(logger_, "user exit, uid:"<<user->uid);
+                clean_user(user);
             } 
             else {
                 clean_conn(conn);

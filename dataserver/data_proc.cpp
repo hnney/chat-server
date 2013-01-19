@@ -17,7 +17,7 @@ static LogicCmd logic_cmd[] = {
     {CMD_GET_FRIEND, NULL}, //2
     {CMD_GET_GROUPINFO, NULL}, //3
     {CMD_EXIT, proc_exit_cmd}, //4
-    {CMD_TEXT, NULL}, //5
+    {CMD_TEXT, proc_text_cmd}, //5
     {CMD_TRANS_FILE, NULL}, //6
     {CMD_SHARE_FILE, NULL}, //7
     {CMD_TRANS_VIDEO, NULL}, //8
@@ -29,6 +29,7 @@ static LogicCmd logic_cmd[] = {
     {CMD_ADD_FRIEND, proc_add_friend}, //14
     {CMD_DEL_FRIEND, NULL}, //15
     {CMD_KA, proc_keepalive_cmd},
+    {CMD_LOAD_MESSAGES, proc_load_messages_cmd},
 };
 
 int proc_cmd(msg_t* msg, void *arg) {
@@ -47,6 +48,20 @@ void send_keepalive() {
     msg_t *msg = new msg_t();
     msg->set_cmd(CMD_KA);
     push_send_event(msg);
+}
+
+void record_to_db(msg_t *msg, DBManager *dbm) {
+    int size = msg->serialize_size();
+    char *buf = (char *) malloc (size * sizeof(char));
+    assert(buf != NULL);
+    if (msg->serialize(buf) == size) {
+        string message(buf, size);
+        dbm->setUserMessages(msg->user_id(), message);
+    }
+    else {
+        cerr<<msg->cmd()<<" serialize msg failed"<<endl;
+    }
+    free(buf);
 }
 
 int proc_login_cmd (msg_t *msg, void *arg) {
@@ -174,6 +189,24 @@ int proc_exit_cmd(msg_t* msg, void *arg) {
     return ret; 
 }
 
+int proc_text_cmd(msg_t *msg, void *arg) {
+    assert(msg != NULL && arg != NULL);
+    DBManager *dbm = (DBManager *)arg;
+    int ret = 1;
+    if (msg->state() >= MAX_BASE_STATE) {
+        DBUser dbuser;
+        if (dbm->getUser(msg->tuid(), dbuser)) {
+            msg->set_user_id(dbuser.user_id);
+            record_to_db(msg, dbm);        
+        } 
+        else {
+            cerr<<"text message failed, uid:"<<msg->uid()<<" tuid:"<<msg->tuid()<<endl;
+        }
+    }
+    //not need retturn to ls
+    return ret;
+}
+
 int proc_keepalive_cmd(msg_t *msg, void *arg) {
     return 0;
 }
@@ -233,11 +266,32 @@ int proc_add_friend(msg_t *msg, void *arg) {
         msg->set_state(3);
         ret = 0;
     }
-    else if (msg->state() == 4) {
+    else if (msg->state() >= MAX_BASE_STATE) {
         //add record to db
-        ret = 0;
+        DBUser dbuser;
+        if (dbm->getUser(msg->tuid(), dbuser)) {
+            msg->set_user_id(dbuser.user_id);
+            record_to_db(msg, dbm);        
+        }
     }
     return ret;
 }
 
+int proc_load_messages_cmd(msg_t *msg, void *arg) {
+    assert(msg != NULL && arg != NULL);
+    DBManager *dbm = (DBManager *)arg;
+    int ret = 1;
+    vector <string> messages;
+    if (dbm->getUserMessages(msg->user_id(), messages)) {
+        for (size_t i = 0; i < messages.size(); i++) {
+            msg_t *msg = new msg_t();
+            const char* buf = messages[i].c_str();
+            msg->unserialize((char*)buf);
+            push_send_event(msg); 
+        }
+        dbm->deleteUserMessages(msg->user_id());
+    } 
+    cout<<"load_messages size:"<<messages.size()<<" user_id:"<<msg->user_id()<<endl;
+    return ret;
+}
 

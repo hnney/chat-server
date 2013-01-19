@@ -1,6 +1,8 @@
 #include "dbmanager.h"
+#include "utils.h"
 //g++ -g -DTEST_ $(mysql_config --cflags) dbmanager.cpp $(mysql_config --libs) libmysqlpp.so 
 //
+//TODO need to Security Certificate
 
 typedef vector<int> IntVectorType;
 
@@ -114,9 +116,9 @@ bool DBManager::connectMysql(Connection &conn) {
         return true;
     }
     conn.set_option(new MultiStatementsOption(CLIENT_MULTI_STATEMENTS));
-    conn.set_option(new SetCharsetNameOption("utf8"));
+    conn.set_option(new SetCharsetNameOption("gbk"));
     if (conn.connect(database_.c_str(), host_.c_str(), user_.c_str(), pwd_.c_str(), port_)){
-        Query q = conn.query("set names utf8");
+        Query q = conn.query("set names gbk");
         q.execute();
         return true;
     }
@@ -140,8 +142,7 @@ int DBManager::execSql(const char *sql) {
             cerr<<"connect mysql faield"<<endl;
             return 0;
         }
-        Query query = conn_.query();
-        query<<sql;
+        Query query = conn_.query(sql);
         query.execute();
     }
     catch(mysqlpp::BadQuery& er) {
@@ -149,6 +150,24 @@ int DBManager::execSql(const char *sql) {
     }
     catch (const mysqlpp::Exception& er) {
         cerr<<"exec sql failed, ["<<sql<<"], err:"<<er.what()<<endl;
+    } 
+    return 1;
+}
+
+int DBManager::execSql(const string &sql) {
+    try {
+        if (!checkConnection()) {
+            cerr<<"connect mysql faield"<<endl;
+            return 0;
+        }
+        Query query = conn_.query(sql);
+        query.execute();
+    }
+    catch(mysqlpp::BadQuery& er) {
+        cerr<<"exec sql failed, ["<<"], err:"<<er.what()<<endl;
+    }
+    catch (const mysqlpp::Exception& er) {
+        cerr<<"exec sql failed, ["<<"], err:"<<er.what()<<endl;
     } 
     return 1;
 }
@@ -445,7 +464,7 @@ int DBManager::getTalkMembers(int talk_id, DBTalks &dbtalks) {
 }
 
 int DBManager::getUserTalks(int user_id, vector <DBTalks> &talks) {
-    static char sqlut[256];
+    char sqlut[256];
     sprintf(sqlut, "select `talks_id` from `user_talks_members` where `user_id`='%d'", user_id);
     int ret = 0;
     StoreQueryResult res;
@@ -461,6 +480,46 @@ int DBManager::getUserTalks(int user_id, vector <DBTalks> &talks) {
         ret = 1;
     }
     return ret;
+}
+
+// msg to db
+int DBManager::getUserMessages(int user_id, vector <string> &messages) {
+    char sql[512];
+    sprintf(sql, "select `messages` from `user_messages` where `user_id`='%d'", user_id);
+    int ret = 0;
+    StoreQueryResult res;
+    if (getStoreData(sql, res)) {
+        if (res.num_rows() > 0) {
+            messages.resize(res.num_rows());      
+        }
+        for (size_t i = 0; i < res.num_rows(); i++) {
+            if (res[i].size() > 0) {
+                string str(res[i][0].c_str(), res[i][0].size());
+                messages[i] = base64_decode(str);
+            }
+        } 
+        ret = 1;
+    }
+    return ret;
+}
+
+int DBManager::setUserMessages(int user_id, const string &messages) {
+    stringstream idstr;
+    idstr<<user_id;
+    char *strDst = new char[messages.size() * 4 + 1];  
+    strDst[messages.size()*4] = '0';
+    base64_encode(messages.c_str(), messages.size(), strDst, messages.size() * 4 + 1);
+    string sql = "insert into `user_messages`(`user_id`, `messages`) values('" + idstr.str() + "','" + strDst + "')"; 
+    execSql(sql);
+    delete []strDst;
+    return 1;
+}
+
+int DBManager::deleteUserMessages(int user_id) {
+    char sql[512];
+    sprintf(sql, "delete from `user_messages` where `user_id`='%d'", user_id);
+    execSql(sql);
+    return 1;
 }
 
 #ifdef TEST_

@@ -140,7 +140,7 @@ conn_t* create_conn(int fd, int readbuf_size, int writebuf_size) {
         conn->read_pos = 0;
         conn->write_pos = 0;
         conn->invalid = 0;
-        conn->data.ptr = NULL;
+        conn->ptr = NULL;
         conn->invalid_time = hl_timestamp() + CONN_INVALID_TIME;
         conn->readbuf = (char *)malloc(sizeof(char)*readbuf_size);
         conn->writebuf = (char *)malloc(sizeof(char)*writebuf_size);

@@ -25,6 +25,7 @@ public:
     bool checkConnection();
    
     int execSql(const char *sql);
+    int execSql(const string &sql);
     int getStoreData(const char *sql, StoreQueryResult &result);
     int getStoreData(const char *sql, UseQueryResult &result);
     int getStoreData(string &sql, StoreQueryResult &result);
@@ -47,6 +48,10 @@ public:
     int getTalkInfo(int talk_id, DBTalks &dbtalks);
     int getTalkMembers(int talk_id, DBTalks &dbtalks); 
     int getUserTalks(int user_id, vector <DBTalks> &talks);
+
+    int getUserMessages(int user_id, vector <string> &messages);
+    int setUserMessages(int user_id, const string &messages);
+    int deleteUserMessages(int user_id);
 
 private:
 

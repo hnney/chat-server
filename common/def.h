@@ -5,6 +5,8 @@
 #define CONN_INVALID_TIME 2000*1000*1000;
 //#define CONN_INVALID_TIME 60*1000*1000;
 
+#define MAX_BASE_STATE 1000
+
 enum CMD_ {
     CMD_RESERVE = 0,
     CMD_LOGIN = 1, //login
@@ -23,6 +25,7 @@ enum CMD_ {
     CMD_ADD_FRIEND = 14,
     CMD_DEL_FRIEND = 15,
     CMD_KA = 16,
+    CMD_LOAD_MESSAGES,
 };
 
 #endif //__DEF_H__

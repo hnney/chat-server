@@ -42,7 +42,8 @@ template <typename T, typename CMP> size_t heap<T,CMP>::push(const T &element)
 
 template <typename T, typename CMP> void heap<T,CMP>::sort() {
     if (size_ > 0) {
-        make_heap(data_.begin(), data_.end(), CMP());
+        //make_heap(data_.begin(), data_.end(), CMP());
+        make_heap(data_.begin(), data_.begin()+size_, CMP());
     }
 }
 

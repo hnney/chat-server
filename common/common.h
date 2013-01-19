@@ -28,10 +28,13 @@ class conn_t {
         int     write_pos;
         int     invalid;
         int     mark;
+        void*   ptr;
+        /*
         union   _data {
             void*   ptr;
             int     uid;
         }data;
+        */
         time_t  invalid_time;
         
 };

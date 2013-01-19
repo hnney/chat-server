@@ -29,6 +29,7 @@ static LogicCmd logic_cmd[] = {
     {CMD_ADD_FRIEND, proc_add_friend}, //14
     {CMD_DEL_FRIEND, NULL}, //15
     {CMD_KA, proc_keepalive_cmd}, //16
+    {CMD_LOAD_MESSAGES, proc_load_messages}, 
 };
 
 extern AppConfig config_;
@@ -73,6 +74,7 @@ void clean_user(user_t* user) {
     if (user->conn) {
         clean_conn(user->conn);   
     }
+    delete user;
 }
 
 void send_user_exit(user_t* user) {
@@ -81,6 +83,17 @@ void send_user_exit(user_t* user) {
     msg.set_cmd(CMD_EXIT);
     msg.set_uid(user->uid);
     msg.set_state(4);
+    send_to_dbserver(&msg);
+}
+
+user_t *get_login_user(string &uid) {
+    return NULL; 
+}
+
+void send_load_messages(int user_id) {
+    msg_t msg;
+    msg.set_user_id(user_id);
+    msg.set_cmd(CMD_LOAD_MESSAGES);
     send_to_dbserver(&msg);
 }
 
@@ -100,16 +113,10 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
         }
    
         user_t* user = new user_t();
-        /*
-        if (user == NULL) {
-            LOG4CXX_ERROR(logger_, "proc_login_cmd, malloc memory failed, state:"<<msg->state()<<" uid:"<<msg->uid());
-            return -1;
-        }   
-        */
         user->uid = msg->uid();
         user->state = STATE_WAIT_LOGIN;
         user->conn = conn;
-        conn->data.ptr = (void*)user;
+        conn->ptr = (void*)user;
         idu_map[user->uid] = user;    
           
         msg->set_state(2);
@@ -158,6 +165,7 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
                     members.push_back(dbinterface.dbtalks[i].members[i].user_id);
                 }
             }
+            send_load_messages(user->id);
         }
         else {
             user->state = STATE_AUTH_FAILED;
@@ -174,7 +182,7 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
 
 int proc_exit_cmd(msg_t* msg, conn_t* conn) {
     if (msg->state() == 1) {
-        user_t *user = (user_t *)conn->data.ptr;
+        user_t *user = (user_t *)conn->ptr;
         if (user == NULL || user->state != STATE_LOGINED) {
             return -1;
         }
@@ -204,7 +212,7 @@ int proc_exit_cmd(msg_t* msg, conn_t* conn) {
 
 int proc_keepalive_cmd(msg_t *msg, conn_t *conn) {
     if (conn->mark == CONN_CLIENT) {
-        user_t *user = (user_t *)conn->data.ptr;
+        user_t *user = (user_t *)conn->ptr;
         if (conn->invalid || user == NULL || user->state != STATE_LOGINED) {
             return 1;
         }
@@ -217,10 +225,12 @@ int proc_keepalive_cmd(msg_t *msg, conn_t *conn) {
 
 int proc_text_cmd(msg_t *msg, conn_t *conn) {
     LOG4CXX_DEBUG(logger_, "send text, uid:"<<msg->uid()<<" tuid:"<<msg->tuid());
-    user_t *user = (user_t *)conn->data.ptr;
-    if (user == NULL || user->state != STATE_LOGINED) {
-        LOG4CXX_DEBUG(logger_, "text, user not logined, uid:"<<msg->uid());
-        return -1;
+    if (msg->state() < MAX_BASE_STATE) {
+        user_t *user = (user_t *)conn->ptr;
+        if (user == NULL || user->state != STATE_LOGINED) {
+            LOG4CXX_DEBUG(logger_, "text, user not logined, uid:"<<msg->uid());
+            return -1;
+        }
     }
     user_t *tuser = NULL;
     map <string, user_t *>::iterator uiter = idu_map.find(msg->tuid());
@@ -230,7 +240,9 @@ int proc_text_cmd(msg_t *msg, conn_t *conn) {
     if (tuser == NULL || tuser->state != STATE_LOGINED) {
         //TODO
         //msg message
+        msg->set_state(msg->state()%MAX_BASE_STATE + MAX_BASE_STATE);
         LOG4CXX_DEBUG(logger_, "text, uid:"<<msg->uid()<<" tuid:"<<msg->tuid());
+        send_to_dbserver(msg);
     }
     else {
         send_to_client(msg, tuser->conn);
@@ -242,7 +254,7 @@ int proc_find_info(msg_t *msg, conn_t *conn) {
     int ret = 0;
     LOG4CXX_DEBUG(logger_, "find user, uid:"<<msg->uid()<<" tuser:"<<msg->tuid()<<" state:"<<msg->state());
     if (msg->state() == 1) {
-        user_t *user = (user_t *)conn->data.ptr;
+        user_t *user = (user_t *)conn->ptr;
         if (user == NULL || user->state != STATE_LOGINED) {
             LOG4CXX_DEBUG(logger_, "user:["<<msg->uid()<<"] not logined, "<<(user==NULL?"user is null":""));
             return -1;
@@ -267,16 +279,46 @@ int proc_find_info(msg_t *msg, conn_t *conn) {
     return ret;
 }
 
+int proc_add_friend_message(msg_t *msg) {
+    int ret = 0;
+    if (msg->state() < MAX_BASE_STATE) {
+        return -1;
+    }
+    user_t *tuser = NULL;
+    map <string, user_t *>::iterator uiter = idu_map.find(msg->tuid());
+    if (uiter != idu_map.end()) {
+        tuser = uiter->second;
+    }
+    if (tuser != NULL) {
+        if (tuser->conn) {
+            send_to_client(msg, tuser->conn);
+        }
+        else {
+            LOG4CXX_DEBUG(logger_, "add friend message proc failed, tuser.conn isnull, tuid:"<<msg->tuid());   
+        }
+    }
+    if (msg->succ() == 0 && msg->type() == 1) {
+        //record to db
+        LOG4CXX_INFO(logger_, "user:["<<msg->uid()<<"] add friend:["<<msg->tuid()<<"], record to db");
+        msg->set_state(2);
+        send_to_dbserver(msg);
+    }
+    return ret;
+}
+
 int proc_add_friend(msg_t *msg, conn_t *conn) {
     int ret = 0;
     //type: 0 发送, 1:验证
     LOG4CXX_DEBUG(logger_, "add friend, uid:"<<msg->uid()<<" tuid:"<<msg->tuid()<<" state:"<<msg->state()<<" succ:"<<msg->succ());
+    if (msg->state() >= MAX_BASE_STATE) {
+        return proc_add_friend_message(msg);
+    }
     if (msg->state() == 1) {
         if (msg->uid() == msg->tuid()) {
             LOG4CXX_DEBUG(logger_, "user can not add self, uid:"<<msg->uid());
             return -1;
         }
-        user_t *user = (user_t *)conn->data.ptr;
+        user_t *user = (user_t *)conn->ptr;
         if (user == NULL || user->state != STATE_LOGINED) {
             LOG4CXX_DEBUG(logger_, "user not logined, uid:"<<msg->uid());
             return -1;
@@ -297,14 +339,14 @@ int proc_add_friend(msg_t *msg, conn_t *conn) {
                     send_to_client(msg, tuser->conn);
                 }
                 else {
-                    msg->set_state(4);
+                    msg->set_state(4 + MAX_BASE_STATE);
                     send_to_dbserver(msg);
                 }
             }
             else {
                 //record to db //liuyan
                 LOG4CXX_INFO(logger_, "user:["<<msg->uid()<<"] msg to tuser:["<<msg->tuid()<<"]");
-                msg->set_state(4);
+                msg->set_state(4 + MAX_BASE_STATE);
                 send_to_dbserver(msg);
             }
         }
@@ -345,11 +387,18 @@ int proc_add_friend(msg_t *msg, conn_t *conn) {
         if (user != NULL && tuser != NULL && msg->succ() == 0) {
             user->friend_ids.push_back(tuser->id);
             tuser->friend_ids.push_back(user->id);  
-            if (tuser->conn) {
-                send_to_client(msg, tuser->conn);
-            }
+        }
+        if (tuser != NULL && tuser->conn) {
+            send_to_client(msg, tuser->conn);
         }
     }
+    return ret;
+}
+
+
+
+int proc_load_messages(msg_t *msg, conn_t *conn) {
+    int ret = 0;
     return ret;
 }
 
