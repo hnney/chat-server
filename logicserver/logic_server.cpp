@@ -10,6 +10,7 @@
 #include <iostream>
 #include <map>
 
+#include <assert.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>

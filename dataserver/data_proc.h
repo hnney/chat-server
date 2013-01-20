@@ -21,6 +21,8 @@ int proc_text_cmd(msg_t *msg, void *arg);
 int proc_keepalive_cmd(msg_t *msg, void *arg); 
 int proc_find_info(msg_t *msg, void *arg);
 int proc_add_friend(msg_t *msg, void *arg);
+int proc_del_friend(msg_t *msg, void *arg);
+
 int proc_load_messages_cmd(msg_t *msg, void *arg);
 
 void clean_conn(conn_t *conn);

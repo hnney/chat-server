@@ -20,6 +20,7 @@ int proc_text_cmd(msg_t *msg, conn_t *conn);
 
 int proc_find_info(msg_t *msg, conn_t *conn);
 int proc_add_friend(msg_t *msg, conn_t *conn);
+int proc_del_friend(msg_t *msg, conn_t *conn);
 
 int proc_load_messages(msg_t *msg, conn_t *conn);
 

@@ -24,7 +24,9 @@ enum CMD_ {
     CMD_FIND_USER = 13,
     CMD_ADD_FRIEND = 14,
     CMD_DEL_FRIEND = 15,
-    CMD_KA = 16,
+    CMD_GROUP_INFO = 16,
+    CMD_TALK_INFO = 17,
+    CMD_KA = 18,
     CMD_LOAD_MESSAGES,
 };
 

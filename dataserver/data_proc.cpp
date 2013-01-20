@@ -27,8 +27,10 @@ static LogicCmd logic_cmd[] = {
     {CMD_GETALL_USERS, NULL}, //12
     {CMD_FIND_USER, proc_find_info}, //13
     {CMD_ADD_FRIEND, proc_add_friend}, //14
-    {CMD_DEL_FRIEND, NULL}, //15
-    {CMD_KA, proc_keepalive_cmd},
+    {CMD_DEL_FRIEND, proc_del_friend}, //15
+    {CMD_GROUP_INFO, NULL}, //16
+    {CMD_TALK_INFO, NULL}, //17
+    {CMD_KA, proc_keepalive_cmd}, //18
     {CMD_LOAD_MESSAGES, proc_load_messages_cmd},
 };
 
@@ -273,6 +275,25 @@ int proc_add_friend(msg_t *msg, void *arg) {
             msg->set_user_id(dbuser.user_id);
             record_to_db(msg, dbm);        
         }
+    }
+    return ret;
+}
+
+int proc_del_friend(msg_t *msg, void *arg) {
+    assert(msg != NULL && arg != NULL);
+    DBManager *dbm = (DBManager *)arg;
+    int ret = 1;
+    if (msg->state() == 2) {
+        DBUser dbfriend;
+        if (dbm->getUser(msg->tuid(), dbfriend)) {
+            dbm->delFriend(msg->user_id(), dbfriend.user_id);
+            dbm->delFriend(dbfriend.user_id, msg->user_id());
+            msg->set_state(3);
+        } 
+        else {
+            msg->set_succ(1);
+        }
+        ret = 0;
     }
     return ret;
 }

@@ -5,7 +5,10 @@
 #include "../common/dbstruct.h"
 #include "../common/msginterface.h"
 
+#include <assert.h>
+
 extern map <string, user_t *> idu_map;
+extern map <int, user_t *> user_map;
 extern map <int, struct conn_t *> fdc_map;
 extern vector <struct conn_t *> dbserver_conns;
 extern map <int, vector <int> > user_groups_;
@@ -27,8 +30,10 @@ static LogicCmd logic_cmd[] = {
     {CMD_GETALL_USERS, NULL}, //12
     {CMD_FIND_USER, proc_find_info}, //13
     {CMD_ADD_FRIEND, proc_add_friend}, //14
-    {CMD_DEL_FRIEND, NULL}, //15
-    {CMD_KA, proc_keepalive_cmd}, //16
+    {CMD_DEL_FRIEND, proc_del_friend}, //15
+    {CMD_GROUP_INFO, NULL}, //16
+    {CMD_TALK_INFO, NULL}, //17
+    {CMD_KA, proc_keepalive_cmd}, //18
     {CMD_LOAD_MESSAGES, proc_load_messages}, 
 };
 
@@ -70,6 +75,9 @@ void clean_conn(conn_t* conn) {
 }
 
 void clean_user(user_t* user) {
+    if (user->id > 0) {
+        user_map.erase(user->id);
+    }
     idu_map.erase(user->uid);
     if (user->conn) {
         clean_conn(user->conn);   
@@ -101,6 +109,17 @@ void send_keepalive(conn_t *conn, msg_t *msg) {
     //TODO
 }
 
+static int user_del_friend(user_t *user, int friend_id) {
+    assert(user != NULL);
+    for (vector <int>::iterator viter = user->friend_ids.begin();
+        viter != user->friend_ids.end(); viter++) {
+        if (friend_id == *viter) {
+            user->friend_ids.erase(viter);
+            break;
+        }
+    }
+    return 0;
+}
 
 int proc_login_cmd (msg_t *msg, conn_t *conn) {
     if (msg->state() == 1) {
@@ -166,6 +185,8 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
                 }
             }
             send_load_messages(user->id);
+            
+            user_map[user->id] = user;
         }
         else {
             user->state = STATE_AUTH_FAILED;
@@ -391,6 +412,57 @@ int proc_add_friend(msg_t *msg, conn_t *conn) {
         if (tuser != NULL && tuser->conn) {
             send_to_client(msg, tuser->conn);
         }
+    }
+    return ret;
+}
+
+int proc_del_friend(msg_t *msg, conn_t *conn) {
+    LOG4CXX_DEBUG(logger_, "recv del_friend_cmd, uid:"<<msg->uid()<<" tuid:"<<msg->tuid()<<" state:"<<msg->state()<<" succ:"<<msg->succ());
+    int ret = 0;
+    if (msg->state() == 1) {
+        if (msg->uid() == msg->tuid()) {
+            return -1;
+        }
+        user_t *user = (user_t *)conn->ptr;
+        if (user == NULL || user->state != STATE_LOGINED) {
+            LOG4CXX_DEBUG(logger_, "del friend failed, user is not login"<<(user==NULL?"user is null":""));
+            return -1;
+        }
+        msg->set_user_id(user->id);
+        msg->set_state(2);
+        send_to_dbserver(msg);
+    }
+    else if (msg->state() == 3) {
+        user_t *user = NULL;
+        user_t *tuser = NULL;
+        map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
+        if (uiter != idu_map.end()) {
+            user = uiter->second;
+        }
+        if (user != NULL) {
+            if  (user->conn) {
+                send_to_client(msg, user->conn); 
+            }
+            if (msg->succ() == 0) {
+                Value json = parseJsonStr(msg->msg());
+                int friend_id;
+                if (get_int_member(json, "id", friend_id)) {
+                    user_del_friend(user, friend_id);
+                }
+            }
+        }
+        uiter = idu_map.find(msg->tuid());
+        if (uiter != idu_map.end()) {
+            tuser = uiter->second;
+        }
+        if (tuser != NULL) {
+            if (tuser->conn) {
+                send_to_client(msg, tuser->conn);
+            }
+            if (msg->succ() == 0) {
+                user_del_friend(tuser, msg->user_id());
+            }      
+        }         
     }
     return ret;
 }
