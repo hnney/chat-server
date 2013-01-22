@@ -8,6 +8,7 @@
 #include "../common/msginterface.h"
 #include "../common/def.h"
 #include <assert.h>
+#include <time.h>
 
 extern AppConfig config_;
 extern log4cxx::LoggerPtr logger_;
@@ -28,7 +29,7 @@ static LogicCmd logic_cmd[] = {
     {CMD_FIND_USER, proc_find_info}, //13
     {CMD_ADD_FRIEND, proc_add_friend}, //14
     {CMD_DEL_FRIEND, proc_del_friend}, //15
-    {CMD_GROUP_INFO, NULL}, //16
+    {CMD_GROUP_INFO, proc_group_info}, //16
     {CMD_TALK_INFO, NULL}, //17
     {CMD_KA, proc_keepalive_cmd}, //18
     {CMD_LOAD_MESSAGES, proc_load_messages_cmd},
@@ -298,6 +299,53 @@ int proc_del_friend(msg_t *msg, void *arg) {
     return ret;
 }
 
+static int proc_create_group(msg_t *msg, void *arg) {
+    DBManager *dbm = (DBManager *)arg;
+    if (msg->state() == 2) {
+        int succ = 0;
+        int t = (int) time(NULL); 
+        int user_id = msg->user_id();
+        string notice="null";
+        string headurl = "null";
+        DBGroup dbgroup;
+        if (!dbm->createGroup(user_id, msg->tuid(), notice, headurl, t)) {
+            succ = 1; 
+        } 
+        else if (!dbm->getGroupInfo(user_id, t, dbgroup)) {
+            succ = 2;
+        }
+        else if (dbgroup.group_id <= 0){
+            succ = 2;
+        }
+        else {
+            succ = 0;
+            Value json(objectValue);
+            json["group"] = buildGroupJson(dbgroup);
+            string strmsg = getJsonStr(json);
+            msg->set_msg(strmsg);
+        }
+        msg->set_succ(succ);
+        msg->set_state(3);
+        return 0;
+    }
+    return 1; 
+}
+   
+int proc_group_info(msg_t *msg, void *arg) {
+    assert(msg != NULL && arg != NULL);
+    int ret = 1;
+    if (msg->type() == 0) {
+    }
+    else if (msg->type() == 1) {
+    }
+    else if (msg->type() == 2) {
+    }
+    else if (msg->type() == 3) {
+        ret = proc_create_group(msg, arg);
+    }
+    return ret;
+}
+
 int proc_load_messages_cmd(msg_t *msg, void *arg) {
     assert(msg != NULL && arg != NULL);
     DBManager *dbm = (DBManager *)arg;
@@ -310,6 +358,7 @@ int proc_load_messages_cmd(msg_t *msg, void *arg) {
             msg->unserialize((char*)buf);
             push_send_event(msg); 
         }
+        //TODO
         dbm->deleteUserMessages(msg->user_id());
     } 
     cout<<"load_messages size:"<<messages.size()<<" user_id:"<<msg->user_id()<<endl;

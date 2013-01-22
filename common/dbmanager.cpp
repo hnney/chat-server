@@ -373,6 +373,33 @@ int DBManager::delFriend(int user_id, int friend_id) {
     return 1;
 }
 
+int DBManager::createGroup(int user_id, string group_name, string &notice, string &headurl, int time) {
+    stringstream idstr;
+    idstr<<user_id;
+    stringstream timestr;
+    timestr<<time;
+    string sql = "insert into `user_group_info`(`name`,`notice`,`headurl`,`user_id`,`create_time`) values('" +
+           group_name + "','" + notice + "','" + headurl + "','" + idstr.str() + "','" + timestr.str() + "')";
+    execSql(sql);
+    return 1;
+}
+int DBManager::getGroupInfo(int user_id, int time, DBGroup &dbgroup) {
+    char sql[256];
+    sprintf(sql, "select `group_id`,`name`,`notice`,`headurl` from `user_group_info` where `user_id`='%d' and `create_time`='%d'", user_id, time);
+    int ret = 0;
+    StoreQueryResult res;
+    if (getStoreData(sql, res)) {
+        if (res.num_rows() > 0 && res[0].size() >= 4) {
+            dbgroup.group_id = atoi(res[0][0].c_str());
+            dbgroup.name = string(res[0][1].c_str(), res[0][1].size());
+            dbgroup.notice = string(res[0][2].c_str(), res[0][2].size());
+            dbgroup.notice = string(res[0][3].c_str(), res[0][3].size()); 
+        }
+        ret = 1;
+    }
+    return ret;
+}
+
 int DBManager::getGroupInfo(int group_id, DBGroup &dbgroup) {
     char sqlgi[256]; 
     sprintf(sqlgi, "select `name`,`notice`,`headurl` from `user_group_info` where `group_id`='%d'", group_id);

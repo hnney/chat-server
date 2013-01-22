@@ -41,10 +41,12 @@ public:
     int modifyFriend(int user_id, int friend_id, string &newtype);
     int delFriend(int user_id, int friend_id);
 
-    int getGroupInfo(int group_id, StoreQueryResult &result);
+    int createGroup(int user_id, string group_name, string &notice, string &headurl, int time);
+    int getGroupInfo(int user_id, int time, DBGroup &dbgroup); 
     int getGroupInfo(int group_id, DBGroup &dbgroup);
     int getGroupMembers(int group_id, DBGroup &dbgroup);
     int getUserGroups(int user_id, vector <DBGroup> &groups);
+
     int getTalkInfo(int talk_id, DBTalks &dbtalks);
     int getTalkMembers(int talk_id, DBTalks &dbtalks); 
     int getUserTalks(int user_id, vector <DBTalks> &talks);

@@ -34,7 +34,7 @@ static LogicCmd logic_cmd[] = {
     {CMD_GROUP_INFO, NULL}, //16
     {CMD_TALK_INFO, NULL}, //17
     {CMD_KA, proc_keepalive_cmd}, //18
-    {CMD_LOAD_MESSAGES, proc_load_messages}, 
+    {CMD_LOAD_MESSAGES, proc_load_messages}, //19
 };
 
 extern AppConfig config_;
@@ -184,7 +184,7 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
                     members.push_back(dbinterface.dbtalks[i].members[i].user_id);
                 }
             }
-            send_load_messages(user->id);
+            //send_load_messages(user->id);
             
             user_map[user->id] = user;
         }
@@ -467,10 +467,75 @@ int proc_del_friend(msg_t *msg, conn_t *conn) {
     return ret;
 }
 
+static int proc_create_group(msg_t *msg, conn_t *conn) {
+    if (msg->state() == 1) {
+        user_t *user = (user_t *)conn->ptr;
+        if (user == NULL || user->state != STATE_LOGINED) {
+            return -1;
+        }
+        //TODO config
+        if (user->group_ids.size() >= 2) {
+            return -1;
+        }
+        msg->set_user_id(user->id);
+        msg->set_state(2);
+        send_to_dbserver(msg);
+    }    
+    else if (msg->state() == 3) {
+        map <string, user_t *>::iterator iter = idu_map.find(msg->uid());
+        if (iter == idu_map.end() || iter->second == NULL) {
+            return -1; 
+        }
+        user_t *user = iter->second;
+        if (user->conn) {
+            send_to_client(msg, user->conn);
+        }
+        if (msg->succ() == 0) {
+            Value json = parseJsonStr(msg->msg());
+            DBGroup group;
+            if (check_arr_member(json, "group")) {
+                parse_group(json["group"], group);
+            }        
+            if (group.group_id > 0) {
+                user->group_ids.push_back(group.group_id);
+                vector <int>& group_members = user_groups_[group.group_id];
+                group_members.push_back(user->id); 
+            }
+        }
+    }
+    return 0;
+}
+
+int proc_group_info(msg_t *msg, conn_t *conn) {
+    int ret = 0;
+    assert(msg != NULL && conn != NULL);
+    if (msg->type() == 0) {
+    } 
+    else if (msg->type() == 1) {
+
+    }
+    else if (msg->type() == 2) {
+    }
+    else if (msg->type() == 3) {
+        ret = proc_create_group(msg, conn);
+    }
+    return ret;
+}
+
 
 
 int proc_load_messages(msg_t *msg, conn_t *conn) {
     int ret = 0;
+    LOG4CXX_DEBUG(logger_, "load message, uid:"<<msg->uid());
+    if (msg->state() == 1) {
+        user_t *user = (user_t *)conn->ptr;
+        if (user == NULL || user->state != STATE_LOGINED) {
+            return -1;
+        }
+        msg->set_user_id(user->id);
+        msg->set_state(2);
+        send_to_dbserver(msg);
+    }    
     return ret;
 }
 

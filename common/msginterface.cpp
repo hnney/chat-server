@@ -32,6 +32,22 @@ Value buildFriendsJson(vector <DBFriend> &dbfriends) {
     return friends;
 }
 
+Value buildGroupJson(DBGroup &dbgroup) {
+    Value json(objectValue);
+    json["uid"] = dbgroup.name;
+    json["notice"] = dbgroup.notice;
+    json["headurl"] = dbgroup.headurl;
+    json["id"] = dbgroup.group_id;
+    Value members(arrayValue);
+    for (size_t i = 0; i < dbgroup.members.size(); i++) {
+        Value userjson(objectValue);
+        buildDBUserJson(userjson, dbgroup.members[i]);
+        members.append(userjson);
+    }
+    json["members"] = members;
+    return json;
+}
+
 Value buildGroupsJson(vector <DBGroup> &dbgroups) {
     Value groups(arrayValue);
     for (size_t i = 0; i < dbgroups.size(); i++) {
@@ -90,6 +106,21 @@ void parse_friends(Value &json, vector <DBFriend> &dbfriends) {
     }
 }
 
+void parse_group(Value &json, DBGroup &dbgroup) {
+    if (!get_int_member(json, "id", dbgroup.group_id)) {
+        return;
+    }
+    if (check_arr_member(json, "members")) {
+        size_t s = json["members"].size();
+        if (s > 0) {
+            dbgroup.members.resize(s);
+        }
+        for (size_t i = 0; i < s; i++) {
+            get_int_member(json["members"][i], "id", dbgroup.members[i].user_id);
+        }
+    } 
+}
+
 void parse_groups(Value &json, vector <DBGroup> &dbgroups) {
     if (json.size() > 0) {
         dbgroups.resize(json.size());
@@ -109,6 +140,7 @@ void parse_groups(Value &json, vector <DBGroup> &dbgroups) {
         } 
     }
 }
+
 void parse_talks(Value &json, vector <DBTalks> &dbtalks) {
     if (json.size() > 0) {
         dbtalks.resize(json.size());

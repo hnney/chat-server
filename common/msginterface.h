@@ -5,11 +5,13 @@
 
 void buildDBUserJson(Value &json, DBUser &dbuser);
 Value buildFriendsJson(vector <DBFriend> &dbfriends);
+Value buildGroupJson(DBGroup &dbgroup);
 Value buildGroupsJson(vector <DBGroup> &dbgroups);
 Value buildTalksJson(vector <DBTalks> &dbtalks);
 void buildDBInterfaceJson(Value &json, DBInterface &dbinterface);
 
 int parse_dbinterface(Value &json, DBInterface &dbinterface);
+void parse_group(Value &json, DBGroup &dbgroup);
 
 
 
