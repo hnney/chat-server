@@ -206,6 +206,9 @@ int proc_text_cmd(msg_t *msg, void *arg) {
             cerr<<"text message failed, uid:"<<msg->uid()<<" tuid:"<<msg->tuid()<<endl;
         }
     }
+    else if (msg->state() == 2) {
+        dbm->recordTextMessage(msg->user_id(), msg->uid(), msg->tuid(), msg->buf(), msg->buflen());
+    }
     //not need retturn to ls
     return ret;
 }
@@ -257,11 +260,19 @@ int proc_add_friend(msg_t *msg, void *arg) {
         //record
         DBUser dbuser;
         DBUser dbfriend; 
-        string friendtype = "online";
+        Value json = parseJsonStr(msg->msg());
+        string friendtype = "我的好友";
+        get_str_member(json, "friend_type", friendtype);
         if (dbm->getUser(msg->uid(), dbuser) && dbm->getUser(msg->tuid(), dbfriend)) {
-            dbm->addFriend(dbuser.user_id, dbfriend.user_id, friendtype);
-            dbm->addFriend(dbfriend.user_id, dbuser.user_id, friendtype);
-            msg->set_succ(0); 
+            if (!dbm->addFriend(dbuser.user_id, dbfriend.user_id, friendtype)) {
+                msg->set_succ(2);
+            }
+            else if (!dbm->addFriend(dbfriend.user_id, dbuser.user_id, friendtype)) {
+                msg->set_succ(2);
+            }
+            else {
+                msg->set_succ(0); 
+            }
         }
         else {
             msg->set_succ(2);

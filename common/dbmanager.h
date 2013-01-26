@@ -55,6 +55,8 @@ public:
     int setUserMessages(int user_id, const string &messages);
     int deleteUserMessages(int user_id);
 
+    int recordTextMessage(int send_id, string send_uid, string recv_uid, const char *text, int textlen, int type=0, int group_id=0);
+
 private:
 
     Connection conn_;

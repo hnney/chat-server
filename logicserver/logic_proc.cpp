@@ -4,6 +4,7 @@
 #include "../common/def.h"
 #include "../common/dbstruct.h"
 #include "../common/msginterface.h"
+#include "../common/heap.h"
 
 #include <assert.h>
 
@@ -13,6 +14,7 @@ extern map <int, struct conn_t *> fdc_map;
 extern vector <struct conn_t *> dbserver_conns;
 extern map <int, vector <int> > user_groups_;
 extern map <int, vector <int> > user_talks_;
+extern heap <conninfo, greater<conninfo> > conn_timeout;
 
 static LogicCmd logic_cmd[] = {
     {CMD_RESERVE, NULL},   //0
@@ -142,6 +144,7 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
         send_to_dbserver(msg);
 
         conn->invalid_time = hl_timestamp() + CONN_INVALID_TIME;
+        conn_timeout.sort();
     }
     else if (msg->state() == 3) {
         map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
@@ -155,6 +158,7 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
         if (msg->succ() == 0) {
             user->state = STATE_LOGINED;
             user->conn->invalid_time = hl_timestamp() + CONN_INVALID_TIME;
+            conn_timeout.sort();
             //parse dbinterface msg
             //TODO
             Value json =  parseJsonStr(msg->msg());
@@ -191,6 +195,7 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
         else {
             user->state = STATE_AUTH_FAILED;
 	    user->conn->invalid_time = 0;
+            conn_timeout.sort();
 	}
         LOG4CXX_INFO(logger_, "user login, succ:"<<msg->succ()<<" uid:"<<user->uid<<" id:"<<user->id<<" state:"<<user->state);
     }
@@ -212,6 +217,7 @@ int proc_exit_cmd(msg_t* msg, conn_t* conn) {
         send_to_dbserver(msg);
      
         conn->invalid_time = hl_timestamp() + CONN_INVALID_TIME;
+        conn_timeout.sort();
     }
     else if (msg->state() == 3) {
         map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
@@ -221,6 +227,7 @@ int proc_exit_cmd(msg_t* msg, conn_t* conn) {
         }
         user_t *user = uiter->second;
         user->conn->invalid_time = 0;
+        conn_timeout.sort();
         send_to_client(msg, user->conn);
         LOG4CXX_INFO(logger_, "user exit, uid:"<<user->uid<<" id:"<<user->id);
     }
@@ -241,6 +248,7 @@ int proc_keepalive_cmd(msg_t *msg, conn_t *conn) {
     	send_to_client(msg, conn);
     }
     conn->invalid_time = hl_timestamp() + CONN_INVALID_TIME;
+    conn_timeout.sort();
     return 0;
 }
 
@@ -252,6 +260,7 @@ int proc_text_cmd(msg_t *msg, conn_t *conn) {
             LOG4CXX_DEBUG(logger_, "text, user not logined, uid:"<<msg->uid());
             return -1;
         }
+        msg->set_user_id(user->id);
     }
     user_t *tuser = NULL;
     map <string, user_t *>::iterator uiter = idu_map.find(msg->tuid());
@@ -267,6 +276,8 @@ int proc_text_cmd(msg_t *msg, conn_t *conn) {
     }
     else {
         send_to_client(msg, tuser->conn);
+        msg->set_state(2);
+        send_to_dbserver(msg);
     }
     return 0;
 }

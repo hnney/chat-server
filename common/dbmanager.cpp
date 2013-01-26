@@ -137,6 +137,7 @@ bool DBManager::checkConnection() {
 }
 
 int DBManager::execSql(const char *sql) {
+    int ret = 0;
     try {
         if (!checkConnection()) {
             cerr<<"connect mysql faield"<<endl;
@@ -144,6 +145,7 @@ int DBManager::execSql(const char *sql) {
         }
         Query query = conn_.query(sql);
         query.execute();
+        ret = 1;
     }
     catch(mysqlpp::BadQuery& er) {
         cerr<<"exec sql failed, ["<<sql<<"], err:"<<er.what()<<endl;
@@ -151,10 +153,11 @@ int DBManager::execSql(const char *sql) {
     catch (const mysqlpp::Exception& er) {
         cerr<<"exec sql failed, ["<<sql<<"], err:"<<er.what()<<endl;
     } 
-    return 1;
+    return ret;
 }
 
 int DBManager::execSql(const string &sql) {
+    int ret = 0;
     try {
         if (!checkConnection()) {
             cerr<<"connect mysql faield"<<endl;
@@ -162,6 +165,7 @@ int DBManager::execSql(const string &sql) {
         }
         Query query = conn_.query(sql);
         query.execute();
+        ret = 1;
     }
     catch(mysqlpp::BadQuery& er) {
         cerr<<"exec sql failed, ["<<"], err:"<<er.what()<<endl;
@@ -169,7 +173,7 @@ int DBManager::execSql(const string &sql) {
     catch (const mysqlpp::Exception& er) {
         cerr<<"exec sql failed, ["<<"], err:"<<er.what()<<endl;
     } 
-    return 1;
+    return ret;
 }
 
 int DBManager::getStoreData(const char *sql, StoreQueryResult &result) {
@@ -355,8 +359,7 @@ int DBManager::getFriends(int user_id, vector <DBFriend> &dbfriends) {
 int DBManager::addFriend(int user_id, int friend_id, string &type) {
     char sql[128];
     sprintf(sql, "insert into `user_friends`(`user_id`, `friend_id`,`type`) values('%d', '%d', '%s')", user_id, friend_id, type.c_str());
-    execSql(sql);
-    return 1;
+    return execSql(sql);
 }
 
 int DBManager::modifyFriend(int user_id, int friend_id, string &newtype) {
@@ -534,7 +537,7 @@ int DBManager::setUserMessages(int user_id, const string &messages) {
     stringstream idstr;
     idstr<<user_id;
     char *strDst = new char[messages.size() * 4 + 1];  
-    strDst[messages.size()*4] = '0';
+    strDst[messages.size()*4] = '\0';
     base64_encode(messages.c_str(), messages.size(), strDst, messages.size() * 4 + 1);
     string sql = "insert into `user_messages`(`user_id`, `messages`) values('" + idstr.str() + "','" + strDst + "')"; 
     execSql(sql);
@@ -548,6 +551,25 @@ int DBManager::deleteUserMessages(int user_id) {
     execSql(sql);
     return 1;
 }
+
+
+int DBManager::recordTextMessage(int send_id, string send_uid, string recv_uid, const char *text, int textlen, int type/*=0*/, int group_id/*=0*/) {
+    stringstream idstr;
+    idstr<<send_id;
+    stringstream typestr;
+    typestr<<type;
+    stringstream group_idstr;
+    group_idstr<<group_id;
+    char *strDst = new char[textlen*4 + 1];
+    strDst[textlen*4] = '\0';
+    base64_encode(text, textlen, strDst, textlen*4+1);
+    string sql = "insert into `text_record`(`send_id`, `send_uid`, `recv_uid`, `type`, `text`, `group_id`) values('" +  
+                 idstr.str() + "','" + send_uid + "','" + recv_uid + "','" + typestr.str() + "','" + string(strDst) + 
+                 "','" + group_idstr.str() + "')";
+    delete []strDst;
+    return execSql(sql);
+}
+
 
 #ifdef TEST_
 //dbname user pwd uid,uid_pwd
