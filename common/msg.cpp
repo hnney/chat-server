@@ -14,6 +14,7 @@ msg_t::msg_t() {
     state_ = 0;
     type_ = 0;
     user_id_ = 0;
+    tuser_id_ = 0;
 }
 msg_t::~msg_t() {
     if (buf_) {
@@ -50,6 +51,9 @@ int msg_t::serialize_size() {
     if (hasbits(9)) {
         ret += sizeof(user_id_);
     }
+    if (hasbits(10)) {
+        ret += sizeof(tuser_id_);
+    }
     return ret;
 }
 //TODO must check Big-Endian and Little-Endian
@@ -85,6 +89,9 @@ int msg_t::serialize(char *buf) {
     }
     if (hasbits(9)) {
         saveint(data, user_id_);
+    }
+    if (hasbits(10)) {
+        saveint(data, tuser_id_);
     }
     return data-buf;
 }
@@ -123,6 +130,9 @@ int msg_t::unserialize(char *buf) {
     if (hasbits(9)) {
         user_id_ = loadint(data);
     }
+    if (hasbits(10)) {
+        tuser_id_ = loadint(data);
+    }
     return data-buf;
 }
 
@@ -150,6 +160,12 @@ ostream& operator <<(ostream &os, msg_t &e) {
     }
     if (e.hasbits(8)) {
         os<<"sate: "<<e.state()<<endl;
+    }
+    if (e.hasbits(9)) {
+        os<<"user_id:"<<e.user_id()<<endl;
+    }
+    if (e.hasbits(10)) {
+        os<<"tuser_id:"<<e.tuser_id()<<endl;
     }
     return os;
 }

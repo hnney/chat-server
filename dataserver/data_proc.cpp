@@ -67,6 +67,20 @@ void record_to_db(msg_t *msg, DBManager *dbm) {
     free(buf);
 }
 
+void record_to_db(int user_id, msg_t *msg, DBManager *dbm) {
+    int size = msg->serialize_size();
+    char *buf = (char *) malloc (size * sizeof(char));
+    assert(buf != NULL);
+    if (msg->serialize(buf) == size) {
+        string message(buf, size);
+        dbm->setUserMessages(user_id, message);
+    }
+    else {
+        cerr<<msg->cmd()<<" serialize msg failed"<<endl;
+    }
+    free(buf);
+}
+
 int proc_login_cmd (msg_t *msg, void *arg) {
     if (arg == NULL || msg == NULL) return -1;
 
@@ -87,6 +101,9 @@ int proc_login_cmd (msg_t *msg, void *arg) {
             string pwdmd5 = md5(pwdsrc);
             if (pwdmd5 == dbinterface.dbuser.user_pwd) {
                 succ = 0;
+            }
+	    else {
+		succ = 2;
             }
         }   
          
@@ -295,17 +312,17 @@ int proc_del_friend(msg_t *msg, void *arg) {
     assert(msg != NULL && arg != NULL);
     DBManager *dbm = (DBManager *)arg;
     int ret = 1;
+    int succ = 0;
     if (msg->state() == 2) {
-        DBUser dbfriend;
-        if (dbm->getUser(msg->tuid(), dbfriend)) {
-            dbm->delFriend(msg->user_id(), dbfriend.user_id);
-            dbm->delFriend(dbfriend.user_id, msg->user_id());
-            msg->set_state(3);
-        } 
-        else {
-            msg->set_succ(1);
-        }
+        dbm->delFriend(msg->user_id(), msg->tuser_id());        
+        dbm->delFriend(msg->tuser_id(), msg->user_id());        
+        msg->set_state(3);
         ret = 0;
+        msg->set_succ(succ);
+    }
+    else if (msg->state() >= MAX_BASE_STATE) {
+        //record to db
+        record_to_db(msg->tuser_id(), msg, dbm);
     }
     return ret;
 }

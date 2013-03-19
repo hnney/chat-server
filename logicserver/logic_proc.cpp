@@ -176,7 +176,7 @@ int proc_login_cmd (msg_t *msg, conn_t *conn) {
                 vector <int> &members = user_groups_[dbinterface.dbgroups[i].group_id];
                 members.clear();
                 for (size_t j = 0; j < dbinterface.dbgroups[i].members.size(); j++) {
-                    members.push_back(dbinterface.dbgroups[i].members[i].user_id);
+                    members.push_back(dbinterface.dbgroups[i].members[j].user_id);
                 }
             }
             for (size_t i = 0; i < dbinterface.dbtalks.size(); i++) {
@@ -252,16 +252,7 @@ int proc_keepalive_cmd(msg_t *msg, conn_t *conn) {
     return 0;
 }
 
-int proc_text_cmd(msg_t *msg, conn_t *conn) {
-    LOG4CXX_DEBUG(logger_, "send text, uid:"<<msg->uid()<<" tuid:"<<msg->tuid());
-    if (msg->state() < MAX_BASE_STATE) {
-        user_t *user = (user_t *)conn->ptr;
-        if (user == NULL || user->state != STATE_LOGINED) {
-            LOG4CXX_DEBUG(logger_, "text, user not logined, uid:"<<msg->uid());
-            return -1;
-        }
-        msg->set_user_id(user->id);
-    }
+int proc_text_friend(msg_t *msg, conn_t *conn) {
     user_t *tuser = NULL;
     map <string, user_t *>::iterator uiter = idu_map.find(msg->tuid());
     if (uiter != idu_map.end()) {
@@ -275,11 +266,83 @@ int proc_text_cmd(msg_t *msg, conn_t *conn) {
         send_to_dbserver(msg);
     }
     else {
+        //msg record
         send_to_client(msg, tuser->conn);
         msg->set_state(2);
         send_to_dbserver(msg);
     }
     return 0;
+}
+int proc_text_group(msg_t *msg, conn_t *conn) {
+    if (msg->state() >= MAX_BASE_STATE) {
+        //group message
+        user_t *tuser = NULL;
+        map <int, user_t *>::iterator uiter = user_map.find(msg->tuser_id());
+        if (uiter != user_map.end()) {
+            tuser = uiter->second;
+        }
+        if (tuser && tuser->conn) {
+            send_to_client(msg, tuser->conn);
+        } 
+    }
+    else {
+        map <int, vector <int> >::iterator ugiter = user_groups_.find(msg->tuser_id());
+        if (ugiter == user_groups_.end()) {
+            LOG4CXX_WARN(logger_, "text group failed, group id:"<<msg->tuser_id()<<" not found");
+            return -1;
+        } 
+	int group_id = msg->tuser_id();
+        for (size_t i = 0; i < ugiter->second.size(); i++) {
+            int tuid = ugiter->second[i];
+            if (tuid == msg->user_id()) {
+                continue;
+            }
+            map <int, user_t *>::iterator uiter = user_map.find(tuid);
+            bool need_message = true;
+            if (uiter != user_map.end()) {
+                if (uiter->second->conn) {
+                    send_to_client(msg, uiter->second->conn);
+                    need_message = false;
+                }
+            }
+            if (need_message) {
+                LOG4CXX_DEBUG(logger_, "text group, uid:"<<tuid<<" not online in group_id:"<<group_id);
+                msg->set_tuser_id(ugiter->second[i]);
+                msg->set_state(msg->state()%MAX_BASE_STATE + MAX_BASE_STATE);
+                send_to_dbserver(msg);
+                msg->set_tuser_id(group_id);
+            }
+        }
+        msg->set_state(2);
+        send_to_dbserver(msg);
+    }
+    return 0;
+}
+
+int proc_text_cmd(msg_t *msg, conn_t *conn) {
+    LOG4CXX_DEBUG(logger_, "send text, uid:"<<msg->uid()<<" tuid:"<<msg->tuid());
+    if (msg->state() < MAX_BASE_STATE) {
+        user_t *user = (user_t *)conn->ptr;
+        if (user == NULL || user->state != STATE_LOGINED) {
+            LOG4CXX_DEBUG(logger_, "text, user not logined, uid:"<<msg->uid());
+            return -1;
+        }
+        msg->set_user_id(user->id);
+    }
+    int ret = 0;
+    if (msg->type() == TEXT_TYPE_FRIEND) {
+        ret = proc_text_friend(msg, conn);
+    }   
+    else if (msg->type() == TEXT_TYPE_GROUP) {
+        ret = proc_text_group(msg, conn);
+    }
+    else if (msg->type() == TEXT_TYPE_TALKS) {
+    }
+    else {
+        LOG4CXX_WARN(logger_, "proc_text_cmd failed, invalid type:"<<msg->type());
+        ret = -1;
+    }
+    return ret;
 }
 
 int proc_find_info(msg_t *msg, conn_t *conn) {
@@ -455,11 +518,7 @@ int proc_del_friend(msg_t *msg, conn_t *conn) {
                 send_to_client(msg, user->conn); 
             }
             if (msg->succ() == 0) {
-                Value json = parseJsonStr(msg->msg());
-                int friend_id;
-                if (get_int_member(json, "id", friend_id)) {
-                    user_del_friend(user, friend_id);
-                }
+                user_del_friend(user, msg->tuser_id());
             }
         }
         uiter = idu_map.find(msg->tuid());
@@ -474,6 +533,22 @@ int proc_del_friend(msg_t *msg, conn_t *conn) {
                 user_del_friend(tuser, msg->user_id());
             }      
         }         
+        else {
+            //TODO
+            msg->set_state(MAX_BASE_STATE);
+            send_to_dbserver(msg);
+        }
+    }
+    else if (msg->state() >= MAX_BASE_STATE) {
+        //proc from message 
+        map <string, user_t *>::iterator uiter = idu_map.find(msg->tuid());
+        if (uiter == idu_map.end()) {
+            return -1;
+        }
+        user_t *user = uiter->second;
+        if (user && user->conn) {
+            send_to_client(msg, user->conn);
+        }
     }
     return ret;
 }

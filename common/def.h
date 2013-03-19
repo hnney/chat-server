@@ -30,5 +30,13 @@ enum CMD_ {
     CMD_LOAD_MESSAGES,
 };
 
+
+enum _TEXT_TYPE_ {
+    TEXT_TYPE_FRIEND = 1,
+    TEXT_TYPE_GROUP = 2,
+    TEXT_TYPE_TALKS = 3,
+};
+
+
 #endif //__DEF_H__
 

@@ -23,6 +23,7 @@ class msg_t {
         string msg_;
 
         int user_id_;
+	int tuser_id_;
 
         unsigned int mark_;
         void setbits(int index) { mark_ |= 1<<index; }
@@ -97,6 +98,12 @@ class msg_t {
             user_id_ = id;
             setbits(9);
         } 
+        //id = 10
+        int tuser_id() { return tuser_id_; }
+        void set_tuser_id(int tuid) { 
+            tuser_id_ = tuid;
+            setbits(10);
+        }
 };
 
 #endif
