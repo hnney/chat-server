@@ -77,6 +77,7 @@ static int accept_new_client(int fd) {
         }
         conn_timeout.push(conninfo(conn));
         fdc_map[c_fd] = conn;
+        conn->ip = clientaddr.sin_addr.s_addr;
 
         if (fd == ds_listen_fd_) {
             conn->mark = CONN_DB_SERVER;

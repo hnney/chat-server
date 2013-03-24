@@ -36,6 +36,7 @@ class conn_t {
         }data;
         */
         time_t  invalid_time;
+        int     ip;
         
 };
 

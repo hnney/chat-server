@@ -570,6 +570,17 @@ int DBManager::recordTextMessage(int send_id, string send_uid, string recv_uid, 
     return execSql(sql);
 }
 
+int DBManager::report(int from_user_id, int from_ip, string tuid, const char* content, int contentlen) {
+    stringstream from_idstr;
+    from_idstr<<from_user_id;
+    stringstream ipstr;
+    ipstr<<from_ip;
+    string strcontent = string(content, contentlen);
+    string sql = "insert into `are_hr_report`(`report_user_name`, `report_from_uid`, `report_ip`, `report_content`) values('" +
+                 tuid + "','" + from_idstr.str() + "','" + ipstr.str() + "','" + strcontent + "')";
+    return execSql(sql);
+}
+
 
 #ifdef TEST_
 //dbname user pwd uid,uid_pwd

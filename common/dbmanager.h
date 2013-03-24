@@ -56,6 +56,7 @@ public:
     int deleteUserMessages(int user_id);
 
     int recordTextMessage(int send_id, string send_uid, string recv_uid, const char *text, int textlen, int type=0, int group_id=0);
+    int report(int from_user_id, int from_ip, string tuid, const char* content, int contentlen);
 
 private:
 

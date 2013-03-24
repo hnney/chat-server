@@ -37,6 +37,7 @@ static LogicCmd logic_cmd[] = {
     {CMD_TALK_INFO, NULL}, //17
     {CMD_KA, proc_keepalive_cmd}, //18
     {CMD_LOAD_MESSAGES, proc_load_messages}, //19
+    {CMD_REPORT, proc_report_cmd}, //19
 };
 
 extern AppConfig config_;
@@ -319,6 +320,52 @@ int proc_text_group(msg_t *msg, conn_t *conn) {
     return 0;
 }
 
+int proc_text_talk(msg_t *msg, conn_t *conn) {
+    if (msg->state() >= MAX_BASE_STATE) {
+        //group message
+        user_t *tuser = NULL;
+        map <int, user_t *>::iterator uiter = user_map.find(msg->tuser_id());
+        if (uiter != user_map.end()) {
+            tuser = uiter->second;
+        }
+        if (tuser && tuser->conn) {
+            send_to_client(msg, tuser->conn);
+        } 
+    }
+    else {
+        map <int, vector <int> >::iterator utiter = user_talks_.find(msg->tuser_id());
+        if (utiter == user_talks_.end()) {
+            LOG4CXX_WARN(logger_, "text talk failed, talk id:"<<msg->tuser_id()<<" not found");
+            return -1;
+        } 
+	int talk_id = msg->tuser_id();
+        for (size_t i = 0; i < utiter->second.size(); i++) {
+            int tuid = utiter->second[i];
+            if (tuid == msg->user_id()) {
+                continue;
+            }
+            map <int, user_t *>::iterator uiter = user_map.find(tuid);
+            bool need_message = true;
+            if (uiter != user_map.end()) {
+                if (uiter->second->conn) {
+                    send_to_client(msg, uiter->second->conn);
+                    need_message = false;
+                }
+            }
+            if (need_message) {
+                LOG4CXX_DEBUG(logger_, "text talk, uid:"<<tuid<<" not online in talk_id:"<<talk_id);
+                msg->set_tuser_id(utiter->second[i]);
+                msg->set_state(msg->state()%MAX_BASE_STATE + MAX_BASE_STATE);
+                send_to_dbserver(msg);
+                msg->set_tuser_id(talk_id);
+            }
+        }
+        msg->set_state(2);
+        send_to_dbserver(msg);
+    }
+    return 0;
+}
+
 int proc_text_cmd(msg_t *msg, conn_t *conn) {
     LOG4CXX_DEBUG(logger_, "send text, uid:"<<msg->uid()<<" tuid:"<<msg->tuid());
     if (msg->state() < MAX_BASE_STATE) {
@@ -337,6 +384,7 @@ int proc_text_cmd(msg_t *msg, conn_t *conn) {
         ret = proc_text_group(msg, conn);
     }
     else if (msg->type() == TEXT_TYPE_TALKS) {
+        ret = proc_text_talk(msg, conn);
     }
     else {
         LOG4CXX_WARN(logger_, "proc_text_cmd failed, invalid type:"<<msg->type());
@@ -622,6 +670,31 @@ int proc_load_messages(msg_t *msg, conn_t *conn) {
         msg->set_state(2);
         send_to_dbserver(msg);
     }    
+    return ret;
+}
+
+
+int proc_report_cmd(msg_t *msg, conn_t *conn) {
+    int ret = 0;
+    LOG4CXX_DEBUG(logger_, "report, uid:"<<msg->uid()<<" tuid:"<<msg->tuid());
+    if (msg->state() == 1) {
+        user_t *user = (user_t *)conn->ptr;
+        if (user == NULL || user->state != STATE_LOGINED) {
+            return -1;
+        }
+        msg->set_type(conn->ip);
+        msg->set_state(2);
+        send_to_dbserver(msg);
+    }
+    else if (msg->state() == 3) {
+        map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
+        if (uiter == idu_map.end()) {
+           return -1;
+        }
+        if (uiter->second && uiter->second->conn) {
+            send_to_client(msg, uiter->second->conn);
+        }
+    }
     return ret;
 }
 

@@ -25,6 +25,7 @@ int proc_del_friend(msg_t *msg, void *arg);
 int proc_group_info(msg_t *msg, void *arg);
 
 int proc_load_messages_cmd(msg_t *msg, void *arg);
+int proc_report_cmd(msg_t *msg, void *arg);
 
 void clean_conn(conn_t *conn);
 void send_keepalive();

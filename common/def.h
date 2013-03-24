@@ -27,7 +27,8 @@ enum CMD_ {
     CMD_GROUP_INFO = 16,
     CMD_TALK_INFO = 17,
     CMD_KA = 18,
-    CMD_LOAD_MESSAGES,
+    CMD_LOAD_MESSAGES = 19,
+    CMD_REPORT = 20,
 };
 
 

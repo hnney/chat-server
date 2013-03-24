@@ -32,7 +32,8 @@ static LogicCmd logic_cmd[] = {
     {CMD_GROUP_INFO, proc_group_info}, //16
     {CMD_TALK_INFO, NULL}, //17
     {CMD_KA, proc_keepalive_cmd}, //18
-    {CMD_LOAD_MESSAGES, proc_load_messages_cmd},
+    {CMD_LOAD_MESSAGES, proc_load_messages_cmd}, //19
+    {CMD_REPORT, proc_report_cmd}, //20
 };
 
 int proc_cmd(msg_t* msg, void *arg) {
@@ -214,13 +215,18 @@ int proc_text_cmd(msg_t *msg, void *arg) {
     DBManager *dbm = (DBManager *)arg;
     int ret = 1;
     if (msg->state() >= MAX_BASE_STATE) {
-        DBUser dbuser;
-        if (dbm->getUser(msg->tuid(), dbuser)) {
-            msg->set_user_id(dbuser.user_id);
-            record_to_db(msg, dbm);        
+        if (msg->type() == TEXT_TYPE_FRIEND) {
+            DBUser dbuser;
+            if (dbm->getUser(msg->tuid(), dbuser)) {
+                msg->set_user_id(dbuser.user_id);
+                record_to_db(msg, dbm);        
+            } 
+            else {
+                cerr<<"text message failed, uid:"<<msg->uid()<<" tuid:"<<msg->tuid()<<endl;
+            }
         } 
         else {
-            cerr<<"text message failed, uid:"<<msg->uid()<<" tuid:"<<msg->tuid()<<endl;
+            record_to_db(msg->tuser_id(), msg, dbm);
         }
     }
     else if (msg->state() == 2) {
@@ -393,3 +399,24 @@ int proc_load_messages_cmd(msg_t *msg, void *arg) {
     return ret;
 }
 
+int proc_report_cmd(msg_t *msg, void *arg) {
+    assert(msg != NULL && arg != NULL);
+    DBManager *dbm = (DBManager *)arg;
+    int ret = 1;
+    DBUser dbuser;
+    int succ;
+    if (dbm->getUser(msg->tuid(), dbuser)) {
+        //type : from_ip
+        if (dbm->report(msg->user_id(), msg->type(), msg->tuid(), msg->buf(), msg->buflen())) { 
+            succ = 0;
+        }
+        else succ = 1;
+    }    
+    else {
+        succ = 2;
+    }
+    msg->set_succ(succ);
+    msg->set_state(3);
+    ret = 0;
+    return ret;
+}
