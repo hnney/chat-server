@@ -405,14 +405,15 @@ int DBManager::getGroupInfo(int user_id, int time, DBGroup &dbgroup) {
 
 int DBManager::getGroupInfo(int group_id, DBGroup &dbgroup) {
     char sqlgi[256]; 
-    sprintf(sqlgi, "select `name`,`notice`,`headurl` from `user_group_info` where `group_id`='%d'", group_id);
+    sprintf(sqlgi, "select `name`,`notice`,`headurl`,`user_id` from `user_group_info` where `group_id`='%d'", group_id);
     int ret = 0;
     StoreQueryResult res;
     if (getStoreData(sqlgi, res)) {
-        if (res.num_rows() > 0 && res[0].size() >= 3) {
+        if (res.num_rows() > 0 && res[0].size() >= 4) {
             dbgroup.name = string(res[0][0].c_str(), res[0][0].size());
             dbgroup.notice = string(res[0][1].c_str(), res[0][1].size());
             dbgroup.headurl = string(res[0][2].c_str(), res[0][2].size());
+            dbgroup.admin_id = atoi(res[0][3].c_str());
         }    
         ret = 1;
     }
@@ -439,6 +440,38 @@ int DBManager::getGroupMembers(int group_id, DBGroup &dbgroup) {
     return ret;
 }
 
+int DBManager::addGroupMember(int group_id, int member_id, int member_type) {
+    char sql[256];
+    sprintf(sql, "insert into `user_group_members`(`group_id`, `user_id`, `type`) values('%d', '%d', '%d')", group_id, member_id, member_type);
+    return execSql(sql);
+}
+
+int DBManager::getGroupMemberType(int group_id, int member_id) {
+    char sql[256];
+    int type = -1;
+    sprintf(sql, "select `type` from `user_group_members` where `group_id`='%d' and `user_id`='%d'", group_id, member_id);
+    StoreQueryResult res;
+    if (getStoreData(sql, res)) {
+        if (res.num_rows() > 0 && res[0].size() > 0) {
+            type = atoi(res[0][0].c_str());
+        }
+    }
+    return type;
+}
+
+int DBManager::delGroupMember(int group_id, int member_id) {
+    char sql[256];
+    sprintf(sql, "delete from `user_group_members` where `group_id`='%d' and `user_id`='%d'", group_id, member_id);
+    return execSql(sql);
+}
+int DBManager::delGroupMember(int group_id) {
+    char sql[256];
+    sprintf(sql, "delete from `user_group_members` where `group_id`='%d'", group_id);
+    execSql(sql);
+    sprintf(sql, "update `user_group_info` set `invalid`='1' where `group_id`='%d'", group_id);
+    return execSql(sql);
+}
+
 int DBManager::getUserGroups(int user_id, vector <DBGroup> &groups) {
     char sqlug[256];
     sprintf(sqlug, "select `group_id` from `user_group_members` where `user_id`='%d'", user_id);
@@ -456,6 +489,23 @@ int DBManager::getUserGroups(int user_id, vector <DBGroup> &groups) {
         ret = 1;
     }
     return ret;
+}
+
+int DBManager::searchGroups(string match_name, vector <DBGroup> &groups) {
+    string sql = "select `group_id`,`name` from `user_group_info` where `name` like \"%" + match_name + "%\" and `invalid`='0'";
+    int ret = 0;
+    StoreQueryResult res;
+    if (getStoreData(sql, res)) {
+        for (size_t i = 0; i < res.num_rows(); i++) {
+            if (res[i].size() > 1) {
+                groups.push_back(DBGroup());
+                groups[i].group_id = atoi(res[i][0].c_str());
+                groups[i].name = string(res[i][1].c_str(), res[i][1].size());
+            }
+        }
+        ret = 1;
+    }
+    return ret; 
 }
 
 int DBManager::getTalkInfo(int talk_id, DBTalks &dbtalks) {

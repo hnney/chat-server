@@ -38,6 +38,12 @@ enum _TEXT_TYPE_ {
     TEXT_TYPE_TALKS = 3,
 };
 
+enum _GROUP_MEMBER_TYPE_ {
+    GROUP_MEMBER_NORMAL = 0,
+    GROUP_MEMBER_MANAGER = 1,
+    GROUP_MEMBER_ADMIN = 2,
+};
+
 
 #endif //__DEF_H__
 

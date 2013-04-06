@@ -52,6 +52,7 @@ public:
        group_id = 0;
     }
     int group_id;
+    int admin_id;
     string name;
     string notice;
     string headurl;

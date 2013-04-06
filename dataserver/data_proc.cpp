@@ -244,8 +244,8 @@ int proc_find_info(msg_t *msg, void *arg) {
     assert(msg != NULL && arg != NULL);
     DBManager *dbm = (DBManager *)arg;
     if (msg->state() == 2) {
+        int succ = 0;
         if (msg->type() == 1) {
-            int succ = 0;
             DBUser dbuser;
             if (!dbm->getUser(msg->tuid().c_str(), dbuser)) {
                 succ = 1;
@@ -270,6 +270,22 @@ int proc_find_info(msg_t *msg, void *arg) {
         }
         else if (msg->type() == 2) {
             //group
+            vector <DBGroup> groups; 
+            dbm->searchGroups(msg->tuid(), groups);
+            Value json(objectValue);
+            Value groupsarray(arrayValue);
+            for (size_t i = 0; i < groups.size(); i++) {
+                Value groupjson(objectValue);
+                groupjson["group_id"] = groups[i].group_id;
+                groupjson["name"] = groups[i].name;
+                groupsarray.append(groupjson);
+            }
+            json["groupinfos"] = groupsarray;
+            string msgstr = getJsonStr(json);
+            msg->set_msg(msgstr);
+            msg->set_state(3);
+            msg->set_succ(0);
+            return 0;
         }
     }
     return 1;
@@ -314,14 +330,36 @@ int proc_add_friend(msg_t *msg, void *arg) {
     return ret;
 }
 
+//type: 1:team, 2:friend, 3:group_friend, 4:group, 5:talk
 int proc_del_friend(msg_t *msg, void *arg) {
     assert(msg != NULL && arg != NULL);
     DBManager *dbm = (DBManager *)arg;
     int ret = 1;
     int succ = 0;
     if (msg->state() == 2) {
-        dbm->delFriend(msg->user_id(), msg->tuser_id());        
-        dbm->delFriend(msg->tuser_id(), msg->user_id());        
+        if (msg->type() == 1) {
+        }
+        else if (msg->type() == 2) {
+            dbm->delFriend(msg->user_id(), msg->tuser_id());        
+            dbm->delFriend(msg->tuser_id(), msg->user_id());        
+        }
+        else if (msg->type() == 3) {
+        }
+        else if (msg->type() == 4) {
+            int member_type = dbm->getGroupMemberType(msg->tuser_id(), msg->user_id());
+            if (member_type < 0) {
+                succ = 1;
+            }
+            else if (member_type == GROUP_MEMBER_ADMIN) { //owner
+                dbm->delGroupMember(msg->tuser_id());
+            }
+            else {
+                dbm->delGroupMember(msg->tuser_id(), msg->user_id());
+            }
+            string tmp('t', member_type + 1);
+            msg->set_buf(tmp.c_str(), member_type + 1);
+        }
+        else { succ = 100; }
         msg->set_state(3);
         ret = 0;
         msg->set_succ(succ);
@@ -351,7 +389,20 @@ static int proc_create_group(msg_t *msg, void *arg) {
         else if (dbgroup.group_id <= 0){
             succ = 2;
         }
+        else if (!dbm->addGroupMember(dbgroup.group_id, user_id, GROUP_MEMBER_ADMIN)) {
+            //add member to group
+            succ = 3;
+        }
         else {
+            dbm->getGroupMembers(dbgroup.group_id, dbgroup);
+     	    for (size_t j = 0; j < dbgroup.members.size(); j++) {
+                //state
+                if (!dbm->getUserState(dbgroup.members[j].user_id, dbgroup.members[j])) {
+                }
+                //info
+                if (!dbm->getUserInfo(dbgroup.members[j].user_id, dbgroup.members[j])) {
+                }
+            }
             succ = 0;
             Value json(objectValue);
             json["group"] = buildGroupJson(dbgroup);
@@ -364,13 +415,86 @@ static int proc_create_group(msg_t *msg, void *arg) {
     }
     return 1; 
 }
+
+int proc_add_group_verify(msg_t *msg, void *arg) {
+    int ret = 1;
+    DBManager *dbm = (DBManager *)arg;
+    if (msg->state() == 2) {
+        int succ = 0;
+        Value json = parseJsonStr(msg->msg());
+        if (json.isObject() && json.isMember("group") && json["group"].isObject()) {
+            int group_id = json["group"]["group_id"].asInt();
+            DBGroup dbgroup;
+            if (!dbm->getGroupInfo(group_id, dbgroup)) {
+                succ = 1;
+            }
+            else {
+                msg->set_tuser_id(dbgroup.admin_id);
+            } 
+        }
+        else {
+            succ = 1000;
+        }
+        msg->set_state(3);
+        ret = 0;
+    } 
+    else if (msg->state() >= MAX_BASE_STATE) {
+        record_to_db(msg->tuser_id(), msg, dbm); 
+    }
+    return ret;
+}
+
+int proc_add_group_reply(msg_t *msg, void *arg) {
+    int ret = 1;
+    DBManager *dbm = (DBManager *)arg;
+    if (msg->state() == 2) {
+        Value json = parseJsonStr(msg->msg());
+        int succ = 0;
+        if (!json.isObject() && !json.isMember("group") || !json["group"].isObject()) {
+            LOG4CXX_DEBUG(logger_, "proc_add_group_reply msg has invalid friend"<<msg->msg());
+            succ = 1;
+        }
+        else {
+            DBGroup dbgroup;
+            dbgroup.group_id = -1;
+            get_int_member(json["group"], "group_id", dbgroup.group_id);
+            if (dbgroup.group_id > 0) {
+                dbm->addGroupMember(dbgroup.group_id, msg->user_id(), 0);
+            } 
+            dbm->getGroupInfo(dbgroup.group_id, dbgroup);
+            dbm->getGroupMembers(dbgroup.group_id, dbgroup);
+            //member info
+            for (size_t j = 0; j < dbgroup.members.size(); j++) {
+                //state
+                if (!dbm->getUserState(dbgroup.members[j].user_id, dbgroup.members[j])) {
+                }
+                //info
+                if (!dbm->getUserInfo(dbgroup.members[j].user_id, dbgroup.members[j])) {
+                }
+            }
+
+            json["group"] = buildGroupJson(dbgroup);
+        }
+        string strmsg = getJsonStr(json);
+        msg->set_msg(strmsg);
+        msg->set_succ(succ);
+        msg->set_state(3);
+        ret = 0;
+    }
+    else if (msg->state() >= MAX_BASE_STATE) {
+        record_to_db(msg->user_id(), msg, dbm);
+    }
+    return ret;
+}
    
 int proc_group_info(msg_t *msg, void *arg) {
     assert(msg != NULL && arg != NULL);
     int ret = 1;
     if (msg->type() == 0) {
+        ret = proc_add_group_verify(msg, arg);
     }
     else if (msg->type() == 1) {
+        ret = proc_add_group_reply(msg, arg);
     }
     else if (msg->type() == 2) {
     }

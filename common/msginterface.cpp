@@ -38,6 +38,7 @@ Value buildGroupJson(DBGroup &dbgroup) {
     json["notice"] = dbgroup.notice;
     json["headurl"] = dbgroup.headurl;
     json["id"] = dbgroup.group_id;
+    json["group_id"] = dbgroup.group_id;
     Value members(arrayValue);
     for (size_t i = 0; i < dbgroup.members.size(); i++) {
         Value userjson(objectValue);

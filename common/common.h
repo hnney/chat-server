@@ -77,6 +77,15 @@ class user_t {
         }
         conn_t *conn;
         int state;
+
+        void del_group(int group_id) {
+            for (vector<int>::iterator iter = group_ids.begin(); iter != group_ids.end(); iter++) {
+                if (*iter == group_id) {
+                    group_ids.erase(iter);
+                    break;
+                } 
+            }
+        }
 };
 
 class group_t {

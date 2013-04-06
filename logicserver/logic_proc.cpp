@@ -33,7 +33,7 @@ static LogicCmd logic_cmd[] = {
     {CMD_FIND_USER, proc_find_info}, //13
     {CMD_ADD_FRIEND, proc_add_friend}, //14
     {CMD_DEL_FRIEND, proc_del_friend}, //15
-    {CMD_GROUP_INFO, NULL}, //16
+    {CMD_GROUP_INFO, proc_group_info}, //16
     {CMD_TALK_INFO, NULL}, //17
     {CMD_KA, proc_keepalive_cmd}, //18
     {CMD_LOAD_MESSAGES, proc_load_messages}, //19
@@ -538,6 +538,7 @@ int proc_add_friend(msg_t *msg, conn_t *conn) {
     return ret;
 }
 
+//type: 1:team, 2:friend, 3:group_friend, 4:group, 5:talk
 int proc_del_friend(msg_t *msg, conn_t *conn) {
     LOG4CXX_DEBUG(logger_, "recv del_friend_cmd, uid:"<<msg->uid()<<" tuid:"<<msg->tuid()<<" state:"<<msg->state()<<" succ:"<<msg->succ());
     int ret = 0;
@@ -546,11 +547,25 @@ int proc_del_friend(msg_t *msg, conn_t *conn) {
             return -1;
         }
         user_t *user = (user_t *)conn->ptr;
-        if (user == NULL || user->state != STATE_LOGINED) {
-            LOG4CXX_DEBUG(logger_, "del friend failed, user is not login"<<(user==NULL?"user is null":""));
+        if (user == NULL || user->state != STATE_LOGINED || msg->user_id() != user->id) {
+            LOG4CXX_DEBUG(logger_, "del friend failed, user is not login"<<(user==NULL?"user is null":"")<<" id:"<<user->id<<" "<<msg->user_id());
             return -1;
         }
-        msg->set_user_id(user->id);
+        //del friend
+        if (msg->type() == 1) {
+            //TODO now don't del team
+            return -1;
+        } 
+        else if (msg->type() == 2) {
+            //check tuser is my friend    
+        } 
+        else if (msg->type() == 3) {
+            //check user is admin
+            //TODO
+            return -1;
+        }
+        else if (msg->type() == 4) {
+        }
         msg->set_state(2);
         send_to_dbserver(msg);
     }
@@ -565,32 +580,66 @@ int proc_del_friend(msg_t *msg, conn_t *conn) {
             if  (user->conn) {
                 send_to_client(msg, user->conn); 
             }
-            if (msg->succ() == 0) {
-                user_del_friend(user, msg->tuser_id());
+            if (msg->type() == 1) {
             }
-        }
-        uiter = idu_map.find(msg->tuid());
-        if (uiter != idu_map.end()) {
-            tuser = uiter->second;
-        }
-        if (tuser != NULL) {
-            if (tuser->conn) {
-                send_to_client(msg, tuser->conn);
+            else if (msg->type() == 2) {
+                if (msg->succ() == 0) {
+                    user_del_friend(user, msg->tuser_id());
+	            uiter = idu_map.find(msg->tuid());
+                    if (uiter != idu_map.end()) {
+                        tuser = uiter->second;
+                    }
+                    if (tuser != NULL) {
+                        send_to_client(msg, tuser->conn);
+                        user_del_friend(tuser, msg->user_id());
+                    }
+                    else {
+                        msg->set_state(MAX_BASE_STATE);
+                        send_to_dbserver(msg); 
+                    }
+                }
             }
-            if (msg->succ() == 0) {
-                user_del_friend(tuser, msg->user_id());
-            }      
-        }         
-        else {
-            //TODO
-            msg->set_state(MAX_BASE_STATE);
-            send_to_dbserver(msg);
+            else if (msg->type() == 3) {
+            }
+            else if (msg->type() == 4) {
+                int member_type = msg->buflen() - 1;
+                if (msg->succ() == 0) {
+                    //TODO
+                    user->del_group(msg->tuser_id());
+                    map<int,vector<int> >::iterator ugmapiter = user_groups_.find(msg->tuser_id());
+                    if (ugmapiter != user_groups_.end()) {
+                        vector <int>& members = ugmapiter->second;
+                        vector <int>::iterator memiter = find(members.begin(), members.end(), user->id);
+                        if (memiter != members.end()) {
+                            members.erase(memiter);
+                        }
+                        if (member_type == 2) { //user_id is owner
+                            memiter = members.begin();
+                            while (memiter != members.end()) {
+                                int user_id = *memiter;
+                                map <int, user_t *>::iterator memmap = user_map.find(user_id);
+                                if (memmap != user_map.end() && memmap->second) {
+                                    send_to_client(msg, memmap->second->conn);
+                                    memmap->second->del_group(user_id);
+                                }
+                                else {
+                                    msg->set_tuser_id(user_id);
+                                    msg->set_state(MAX_BASE_STATE);
+                                    send_to_dbserver(msg); 
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else {
+            }
         }
     }
     else if (msg->state() >= MAX_BASE_STATE) {
         //proc from message 
-        map <string, user_t *>::iterator uiter = idu_map.find(msg->tuid());
-        if (uiter == idu_map.end()) {
+        map <int, user_t *>::iterator uiter = user_map.find(msg->tuser_id());
+        if (uiter == user_map.end()) {
             return -1;
         }
         user_t *user = uiter->second;
@@ -608,10 +657,10 @@ static int proc_create_group(msg_t *msg, conn_t *conn) {
             return -1;
         }
         //TODO config
-        if (user->group_ids.size() >= 2) {
+        if (user->group_ids.size() >= 20) {
             return -1;
         }
-        msg->set_user_id(user->id);
+        //msg->set_user_id(user->id);
         msg->set_state(2);
         send_to_dbserver(msg);
     }    
@@ -640,13 +689,128 @@ static int proc_create_group(msg_t *msg, conn_t *conn) {
     return 0;
 }
 
+int proc_add_group_verify(msg_t *msg, conn_t *conn) {
+    int ret = 0;
+    if (msg->state() == 1){ 
+        user_t *user = (user_t *)conn->ptr;
+        if (!user || user->id != msg->user_id()) {
+            LOG4CXX_DEBUG(logger_, "proc_add_group failed, uid is error");
+            ret = -1;
+        }
+        else {
+	    msg->set_state(2);
+            send_to_dbserver(msg);
+        }
+    } 
+    else if (msg->state() == 3) {
+        map <int, user_t *>::iterator iter = user_map.find(msg->tuser_id());
+        if (iter != user_map.end() && iter->second) {
+            user_t *user = iter->second;
+            send_to_client(msg, user->conn);
+        }
+        else {
+            msg->set_state(MAX_BASE_STATE);
+            send_to_dbserver(msg);
+        }
+    }
+    else if (msg->state() >= MAX_BASE_STATE) {
+        map <int, user_t *>::iterator iter = user_map.find(msg->tuser_id());
+        if (iter != user_map.end() && iter->second) {
+            user_t *user = iter->second;
+            send_to_client(msg, user->conn);
+        }
+        else {
+            LOG4CXX_DEBUG(logger_, "proc_add_group_verify msg failed !");
+        }
+    }
+    return ret;
+}
+
+int proc_add_group_reply(msg_t *msg, conn_t *conn) {
+    int ret = 0;
+    if (msg->state() == 1) {
+        user_t *user = (user_t *)conn->ptr;
+        if (!user || msg->tuser_id() != user->id) {
+            LOG4CXX_DEBUG(logger_, "proc_add_group_verify invalid user_id:"<<msg->tuser_id());
+            return 1;
+        }
+        if (msg->succ() == 0) {
+            msg->set_state(2);
+            send_to_dbserver(msg);
+            return 0;
+        }
+        map <int, user_t *>::iterator iter = user_map.find(msg->user_id());
+        if (iter == user_map.end() || iter->second == NULL) {
+            msg->set_state(MAX_BASE_STATE);
+            send_to_dbserver(msg);
+            return 0;
+        }
+        if (iter->second->conn) {
+            send_to_client(msg, iter->second->conn);
+        }
+    }
+    else if (msg->state() == 3) {
+        map <int, user_t *>::iterator iter = user_map.find(msg->user_id());
+        user_t *user = NULL;
+        if (iter == user_map.end() || iter->second == NULL) {
+            msg->set_state(MAX_BASE_STATE);
+            send_to_dbserver(msg);
+        } 
+        else {
+            user = iter->second;
+            if (user->conn) { 
+                send_to_client(msg, user->conn);
+            }
+        }
+        if (msg->succ() == 0) {
+            Value json = parseJsonStr(msg->msg());
+            if (json.isObject() && json.isMember("group") && json["group"].isObject()) {
+                int group_id = -1;
+                get_int_member(json["group"], "group_id", group_id);
+                if (group_id > 0) {
+                    if (user) {
+		          user->group_ids.push_back(group_id);
+                    }
+                    vector <int>& members = user_groups_[group_id];
+                    //notify another user
+                    for (size_t i = 0; i < members.size(); i++) {
+                        if (members[i] == msg->tuser_id()) {
+                            continue;
+                        }
+                        map <int, user_t *>::iterator memiter = user_map.find(members[i]);
+                        if (memiter != user_map.end() && memiter->second && memiter->second->conn) {
+                            send_to_client(msg, memiter->second->conn);
+                        }
+                    }
+                    members.push_back(msg->user_id()); 
+		}
+                else {
+                    LOG4CXX_DEBUG(logger_, "add group reply, get group_id failed");
+                }
+            }
+            else {
+                LOG4CXX_DEBUG(logger_, "add group reply, invalid json:"<<msg->msg());
+            }
+        }
+    }
+    else if (msg->state() >= MAX_BASE_STATE) {
+        map <int,user_t *>::iterator iter = user_map.find(msg->user_id());
+        if (iter != user_map.end() && iter->second && iter->second->conn) {
+            send_to_client(msg, iter->second->conn);
+        } 
+    }
+    return ret;
+}
+
 int proc_group_info(msg_t *msg, conn_t *conn) {
     int ret = 0;
     assert(msg != NULL && conn != NULL);
+    LOG4CXX_DEBUG(logger_, "group info, uid:"<<msg->uid()<<", type:"<<msg->type()<<" state:"<<msg->state());
     if (msg->type() == 0) {
+        ret = proc_add_group_verify(msg, conn);
     } 
     else if (msg->type() == 1) {
-
+	ret = proc_add_group_reply(msg, conn);
     }
     else if (msg->type() == 2) {
     }

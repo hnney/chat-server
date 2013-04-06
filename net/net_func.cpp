@@ -242,6 +242,10 @@ int read_data(struct conn_t *conn, void *buf, int len)
 }
 
 int send_to_client(msg_t *msg, conn_t* conn) {
+    if (conn == NULL || msg == NULL) {
+        cerr<<"msg or conn is null"<<endl;
+        return -1;
+    }
     int bufsize = conn->writebuf_size - conn->write_pos;
     int datalen = msg->serialize_size();
     if (bufsize < datalen + 6) {

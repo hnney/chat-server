@@ -23,6 +23,7 @@ int proc_add_friend(msg_t *msg, conn_t *conn);
 int proc_del_friend(msg_t *msg, conn_t *conn);
 
 int proc_load_messages(msg_t *msg, conn_t *conn);
+int proc_group_info(msg_t *msg, conn_t *conn);
 
 int proc_report_cmd(msg_t *msg, conn_t *conn);
 

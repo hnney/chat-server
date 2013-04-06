@@ -45,7 +45,12 @@ public:
     int getGroupInfo(int user_id, int time, DBGroup &dbgroup); 
     int getGroupInfo(int group_id, DBGroup &dbgroup);
     int getGroupMembers(int group_id, DBGroup &dbgroup);
+    int addGroupMember(int group_id, int member_id, int member_type=0);
+    int getGroupMemberType(int group_id, int member_id);
+    int delGroupMember(int group_id, int member_id);
+    int delGroupMember(int group_id);
     int getUserGroups(int user_id, vector <DBGroup> &groups);
+    int searchGroups(string match_name, vector <DBGroup> &groups);
 
     int getTalkInfo(int talk_id, DBTalks &dbtalks);
     int getTalkMembers(int talk_id, DBTalks &dbtalks); 
