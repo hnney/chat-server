@@ -420,6 +420,15 @@ int DBManager::getGroupInfo(int group_id, DBGroup &dbgroup) {
     return ret;
 }
 
+int DBManager::modifyGroupName(int group_id, int user_id, string &name) {
+    stringstream group_idstr;
+    group_idstr<<group_id;
+    stringstream user_idstr;
+    user_idstr<<user_id; 
+    string sql = "update `user_group_info` set `name`='" + name + "' where `group_id`='" + group_idstr.str() + "' and `user_id`='" + user_idstr.str() + "'";
+    return execSql(sql);
+}
+
 int DBManager::getGroupMembers(int group_id, DBGroup &dbgroup) {
     char sqlgm[256]; 
     sprintf(sqlgm, "select `user_id`,`type` from `user_group_members` where `group_id`='%d'", group_id);

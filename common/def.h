@@ -44,6 +44,13 @@ enum _GROUP_MEMBER_TYPE_ {
     GROUP_MEMBER_ADMIN = 2,
 };
 
+enum _GROUP_INFO_ {
+    GROUP_INFO_VERIFY = 0,
+    GROUP_INFO_REPLY = 1,
+    GROUP_INFO_CREATE = 3,
+    GROUP_INFO_MODIFY = 4,
+};
+
 
 #endif //__DEF_H__
 

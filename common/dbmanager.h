@@ -44,6 +44,7 @@ public:
     int createGroup(int user_id, string group_name, string &notice, string &headurl, int time);
     int getGroupInfo(int user_id, int time, DBGroup &dbgroup); 
     int getGroupInfo(int group_id, DBGroup &dbgroup);
+    int modifyGroupName(int group_id, int user_id, string &name);
     int getGroupMembers(int group_id, DBGroup &dbgroup);
     int addGroupMember(int group_id, int member_id, int member_type=0);
     int getGroupMemberType(int group_id, int member_id);

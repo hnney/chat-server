@@ -802,20 +802,49 @@ int proc_add_group_reply(msg_t *msg, conn_t *conn) {
     return ret;
 }
 
+int proc_modify_group(msg_t *msg, conn_t *conn) {
+    int ret = 0;
+    if (msg->state() == 1) {
+        user_t *user = (user_t *)conn->ptr;
+        if (user == NULL || user->id != msg->user_id()) {
+            return 0;
+        }
+        if (find(user->group_ids.begin(), user->group_ids.end(), msg->tuser_id()) == user->group_ids.end()) {
+            return 0;
+        }
+        msg->set_state(2);
+        send_to_dbserver(msg);
+    }
+    else if (msg->state() == 3) {
+        map <int,user_t *>::iterator uiter = user_map.find(msg->user_id());
+        if (uiter == user_map.end() || uiter->second == NULL) {
+            return 0;
+        }
+        user_t *user = uiter->second;
+        if (user->conn) {
+            send_to_client(msg, user->conn);
+        }        
+    }
+    return ret;
+}
+
 int proc_group_info(msg_t *msg, conn_t *conn) {
     int ret = 0;
     assert(msg != NULL && conn != NULL);
     LOG4CXX_DEBUG(logger_, "group info, uid:"<<msg->uid()<<", type:"<<msg->type()<<" state:"<<msg->state());
-    if (msg->type() == 0) {
+    if (msg->type() == GROUP_INFO_VERIFY) {
         ret = proc_add_group_verify(msg, conn);
     } 
-    else if (msg->type() == 1) {
+    else if (msg->type() == GROUP_INFO_REPLY) {
 	ret = proc_add_group_reply(msg, conn);
     }
     else if (msg->type() == 2) {
     }
-    else if (msg->type() == 3) {
+    else if (msg->type() == GROUP_INFO_CREATE) {
         ret = proc_create_group(msg, conn);
+    }
+    else if (msg->type() == GROUP_INFO_MODIFY) {
+        ret = proc_modify_group(msg, conn);
     }
     return ret;
 }

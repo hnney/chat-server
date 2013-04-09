@@ -486,20 +486,40 @@ int proc_add_group_reply(msg_t *msg, void *arg) {
     }
     return ret;
 }
+
+int proc_modify_group(msg_t *msg, void *arg) {
+    DBManager *dbm = (DBManager *)arg;
+    int ret = 1;
+    if (msg->state() == 2) {
+        string group_name = msg->tuid();
+        if (dbm->modifyGroupName(msg->tuser_id(), msg->user_id(), group_name)) {
+            msg->set_succ(0);
+        }
+        else {
+            msg->set_succ(1);
+        }
+        msg->set_state(3);
+        ret = 0;
+    }
+    return ret;
+}
    
 int proc_group_info(msg_t *msg, void *arg) {
     assert(msg != NULL && arg != NULL);
     int ret = 1;
-    if (msg->type() == 0) {
+    if (msg->type() == GROUP_INFO_VERIFY) {
         ret = proc_add_group_verify(msg, arg);
     }
-    else if (msg->type() == 1) {
+    else if (msg->type() == GROUP_INFO_REPLY) {
         ret = proc_add_group_reply(msg, arg);
     }
     else if (msg->type() == 2) {
     }
-    else if (msg->type() == 3) {
+    else if (msg->type() == GROUP_INFO_CREATE) {
         ret = proc_create_group(msg, arg);
+    }
+    else if (msg->type() == GROUP_INFO_MODIFY) {
+        ret = proc_modify_group(msg, arg);
     }
     return ret;
 }
