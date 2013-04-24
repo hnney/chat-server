@@ -114,7 +114,7 @@ void *event_thread(void *arg) {
             usleep(300);
         }
         time_t now = hl_timestamp();
-        if (now - last_keepalive > 100*1000*1000) {
+        if (now - last_keepalive > 10*1000*1000) {
             //cout<<"t:"<<(now-last_keepalive)<<endl;
             last_keepalive = now;
             //ka

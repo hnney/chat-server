@@ -548,7 +548,7 @@ int proc_del_friend(msg_t *msg, conn_t *conn) {
         }
         user_t *user = (user_t *)conn->ptr;
         if (user == NULL || user->state != STATE_LOGINED || msg->user_id() != user->id) {
-            LOG4CXX_DEBUG(logger_, "del friend failed, user is not login"<<(user==NULL?"user is null":"")<<" id:"<<user->id<<" "<<msg->user_id());
+            LOG4CXX_DEBUG(logger_, "del friend failed, user is not login"<<(user==NULL?"user is null":""));
             return -1;
         }
         //del friend
@@ -617,6 +617,7 @@ int proc_del_friend(msg_t *msg, conn_t *conn) {
                             memiter = members.begin();
                             while (memiter != members.end()) {
                                 int user_id = *memiter;
+                                int group_id = msg->tuser_id();
                                 map <int, user_t *>::iterator memmap = user_map.find(user_id);
                                 if (memmap != user_map.end() && memmap->second) {
                                     send_to_client(msg, memmap->second->conn);
@@ -627,7 +628,10 @@ int proc_del_friend(msg_t *msg, conn_t *conn) {
                                     msg->set_state(MAX_BASE_STATE);
                                     send_to_dbserver(msg); 
                                 }
+                                msg->set_tuser_id(group_id);
+                                memiter++;
                             }
+		            user_groups_.erase(ugmapiter);
                         }
                     }
                 }

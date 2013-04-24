@@ -219,6 +219,7 @@ int send_data(struct conn_t *conn, const void *buf, int len)
 {
     if (conn->writebuf_size - conn->write_pos < len) {
         cerr<<"send buffer not enough, fd:"<<conn->fd<<" wpos:"<<conn->write_pos<<" len:"<<len<<" mark:"<<conn->mark<<endl;
+        conn->invalid = 1;
         return -1;
     }
     memcpy(conn->writebuf + conn->write_pos, buf, len);
@@ -250,6 +251,7 @@ int send_to_client(msg_t *msg, conn_t* conn) {
     int datalen = msg->serialize_size();
     if (bufsize < datalen + 6) {
         cerr<<"send buffer not enough, buf:"<<bufsize<<" datalen:"<<datalen<<endl; 
+        conn->invalid = 1;
         return -1; 
     }   
     char *buf = conn->writebuf + conn->write_pos;
@@ -265,6 +267,7 @@ int send_msg(conn_t* conn, msg_t *msg) {
     int datalen = msg->serialize_size();
     if (bufsize < datalen + 6) {
         cerr<<"send buffer not enough, buf:"<<bufsize<<" datalen:"<<datalen<<endl; 
+        conn->invalid = 1;
         return -1; 
     }   
     char *buf = conn->writebuf + conn->write_pos;
