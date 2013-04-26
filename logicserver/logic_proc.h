@@ -26,6 +26,9 @@ int proc_load_messages(msg_t *msg, conn_t *conn);
 int proc_group_info(msg_t *msg, conn_t *conn);
 
 int proc_report_cmd(msg_t *msg, conn_t *conn);
+int proc_setinfo_cmd(msg_t *msg, conn_t *conn);
+
+
 
 void clean_conn(conn_t *conn);
 void clean_user(user_t *user);

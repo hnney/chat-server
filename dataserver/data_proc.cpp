@@ -34,6 +34,7 @@ static LogicCmd logic_cmd[] = {
     {CMD_KA, proc_keepalive_cmd}, //18
     {CMD_LOAD_MESSAGES, proc_load_messages_cmd}, //19
     {CMD_REPORT, proc_report_cmd}, //20
+    {CMD_SETINFO, proc_setinfo_cmd}, //21
 };
 
 int proc_cmd(msg_t* msg, void *arg) {
@@ -564,3 +565,32 @@ int proc_report_cmd(msg_t *msg, void *arg) {
     ret = 0;
     return ret;
 }
+
+int proc_setinfo_cmd(msg_t *msg, void *arg) {
+    assert(msg != NULL && arg != NULL);
+    int ret = 1;
+    if (msg->state() == 2) {
+        DBManager *dbm = (DBManager *)arg;
+        int succ = 1000;
+        if (msg->type() == 0) { //set invited
+            int invited = -1;
+            Value json = parseJsonStr(msg->msg());
+            if (json.isObject() && json.isMember("invited")) {
+                invited = json["invited"].asInt();
+            }
+            else {
+                succ = 1;
+            }
+            if (invited >=0 && dbm->setUserInvited(msg->user_id(), invited)) {
+                succ = 0;
+            }
+            else succ = 2;
+        }
+        msg->set_state(3);
+        msg->set_succ(succ);
+        ret = 0;
+    }
+    return ret;
+}
+
+

@@ -37,7 +37,8 @@ static LogicCmd logic_cmd[] = {
     {CMD_TALK_INFO, NULL}, //17
     {CMD_KA, proc_keepalive_cmd}, //18
     {CMD_LOAD_MESSAGES, proc_load_messages}, //19
-    {CMD_REPORT, proc_report_cmd}, //19
+    {CMD_REPORT, proc_report_cmd}, //20
+    {CMD_SETINFO, proc_setinfo_cmd}, //21
 };
 
 extern AppConfig config_;
@@ -890,6 +891,33 @@ int proc_report_cmd(msg_t *msg, conn_t *conn) {
         }
         if (uiter->second && uiter->second->conn) {
             send_to_client(msg, uiter->second->conn);
+        }
+    }
+    return ret;
+}
+
+
+//msg->type: 0 set invited
+int proc_setinfo_cmd(msg_t *msg, conn_t *conn) {
+    int ret = 0;
+    LOG4CXX_DEBUG(logger_, "setinfo, uid:"<<msg->user_id()<<" type:"<<msg->type()<<" state:"<<msg->state()<<" succ:"<<msg->succ());
+    if (msg->state() == 1) {
+        user_t *user = (user_t *)conn->ptr;
+        if (user == NULL || user->id != msg->user_id()) {
+            return -1;
+        }
+        msg->set_state(2);
+        send_to_dbserver(msg);
+    }
+    else if (msg->state() == 2) {
+        if (msg->type() == 0) {
+	    Value json = parseJsonStr(msg->msg());
+            if (msg->succ() == 0 && json.isObject() && json.isMember("invited")) {
+                map <int, user_t *>::iterator iter = user_map.find(msg->user_id());
+                if (iter != user_map.end() && iter->second != NULL) {
+                    iter->second->invited = json["invited"].asInt();
+                }
+            } 
         }
     }
     return ret;

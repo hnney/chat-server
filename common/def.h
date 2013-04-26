@@ -29,6 +29,7 @@ enum CMD_ {
     CMD_KA = 18,
     CMD_LOAD_MESSAGES = 19,
     CMD_REPORT = 20,
+    CMD_SETINFO = 21,
 };
 
 

@@ -336,6 +336,12 @@ int DBManager::setUserState(int user_id, int state) {
     return 1; 
 }
 
+int DBManager::setUserInvited(int user_id, int invited) {
+    char sql[128];
+    sprintf(sql, "update `user_state` set `invited`='%d' where `user_id`='%d'", invited, user_id);
+    return execSql(sql);
+}
+
 int DBManager::getFriends(int user_id, vector <DBFriend> &dbfriends) {
     char sqlf[256];
     sprintf(sqlf,"select `friend_id`,`type` from `user_friends` where `user_id`='%d'", user_id);

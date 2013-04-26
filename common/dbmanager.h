@@ -35,6 +35,7 @@ public:
     int getUserInfo(int user_id, DBUser &dbu);
     int getUserState(int user_id, DBUser &dbu) ;
     int setUserState(int user_id, int state);
+    int setUserInvited(int user_id, int invited);
 
     int getFriends(int user_id, vector <DBFriend> &dbfriends);
     int addFriend(int user_id, int friend_id, string &type);
