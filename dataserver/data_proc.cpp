@@ -317,7 +317,12 @@ int proc_add_friend(msg_t *msg, void *arg) {
         else {
             msg->set_succ(2);
         }
-        msg->set_state(3);
+        if (msg->type() == 100) {
+            msg->set_state(11);
+        }
+        else {
+            msg->set_state(3);
+        }
         ret = 0;
     }
     else if (msg->state() >= MAX_BASE_STATE) {

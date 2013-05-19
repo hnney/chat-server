@@ -513,6 +513,34 @@ int proc_add_friend(msg_t *msg, conn_t *conn) {
                 //log
             }
         }
+        else if (msg->type() == 100) {
+            //TODO
+	    user_t *tuser = NULL;
+            map <string, user_t *>::iterator uiter = idu_map.find(msg->tuid());
+            if (uiter != idu_map.end()) {
+                tuser = uiter->second;
+            }
+            if (tuser != NULL) {
+                if (find(user->friend_ids.begin(), user->friend_ids.end(), tuser->id) != user->friend_ids.end()) {
+                    LOG4CXX_DEBUG(logger_, "user already had friend, uid:"<<user->uid<<" tuid:"<<tuser->uid);
+                    return -1;
+                }
+                if (tuser->conn) {
+                    int old_type = msg->type();
+                    msg->set_type(0);
+                    send_to_client(msg, tuser->conn);
+                    msg->set_type(old_type);
+                }
+            }
+            else {
+                //record to db //liuyan
+                LOG4CXX_INFO(logger_, "user:["<<msg->uid()<<"] msg to tuser:["<<msg->tuid()<<"]");
+                msg->set_state(4 + MAX_BASE_STATE);
+                send_to_dbserver(msg);
+            }
+            msg->set_state(2);
+            send_to_dbserver(msg);
+        }
         else {
             ret = -1;
         }
@@ -534,6 +562,25 @@ int proc_add_friend(msg_t *msg, conn_t *conn) {
         }
         if (tuser != NULL && tuser->conn) {
             send_to_client(msg, tuser->conn);
+        }
+    }
+    else if (msg->state() == 11) { // buyao yanzheng jia haoyoushi
+        user_t *user = NULL;
+        user_t *tuser = NULL;
+        map <string, user_t *>::iterator uiter = idu_map.find(msg->uid());
+        if (uiter != idu_map.end()) {
+             user = uiter->second;
+        } 
+        uiter = idu_map.find(msg->tuid());
+        if (uiter != idu_map.end()) {
+            tuser = uiter->second;
+        }
+        if (user != NULL && tuser != NULL && msg->succ() == 0) {
+            user->friend_ids.push_back(tuser->id);
+            tuser->friend_ids.push_back(user->id);  
+        }
+        if (user != NULL && user->conn) {
+            send_to_client(msg, user->conn);
         }
     }
     return ret;
