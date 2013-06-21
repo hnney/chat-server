@@ -465,7 +465,9 @@ int proc_add_group_reply(msg_t *msg, void *arg) {
             dbgroup.group_id = -1;
             get_int_member(json["group"], "group_id", dbgroup.group_id);
             if (dbgroup.group_id > 0) {
-                dbm->addGroupMember(dbgroup.group_id, msg->user_id(), 0);
+                if (!dbm->addGroupMember(dbgroup.group_id, msg->user_id(), 0)) {
+		    succ = 2;
+		}
             } 
             dbm->getGroupInfo(dbgroup.group_id, dbgroup);
             dbm->getGroupMembers(dbgroup.group_id, dbgroup);
